@@ -278,7 +278,7 @@ For issues, questions, or contributions:
 ## 🎉 Credits
 
 - ONNX Runtime by Microsoft
-- Model training dataset: [Add dataset info]
+- Model training dataset: ICAR-ISRI Crop Protection Division Dataset
 - UI Design: Material Design 3
 
 ---
