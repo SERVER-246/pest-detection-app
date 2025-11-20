@@ -1,0 +1,9 @@
+﻿build/
+.gradle/
+*.apk
+*.aab
+app/src/main/assets/models/
+app/src/main/assets/*.onnx
+.idea/
+*.iml
+local.properties

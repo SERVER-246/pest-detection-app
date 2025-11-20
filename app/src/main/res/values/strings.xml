@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Pest-1</string>
+
+    <!-- Header -->
+    <string name="pest_title">Pest-1</string>
+    <string name="pest_subtitle">AI Pest Detection System</string>
+
+    <!-- Image Section -->
+    <string name="selected_pest_image_desc">Selected pest image</string>
+    <string name="image_placeholder_text">No image selected\n\nTap button below to choose</string>
+    <!-- keep your original key too (in case other code references it) -->
+    <string name="no_image_selected">No image selected\n\nTap button below to choose</string>
+
+    <!-- Buttons -->
+    <string name="choose_image">Choose Image</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="analyze_pest">ANALYZE PEST</string>
+
+    <!-- Model selection (both names provided so either layout will work) -->
+    <string name="select_model">Select AI Model</string>
+    <string name="select_ai_model">Select AI Model</string>
+
+    <!-- Results -->
+    <string name="classification_results">Classification Results</string>
+    <string name="results_placeholder">Results will appear here after analysis</string>
+
+    <!-- Loading / messages -->
+    <string name="loading">Loading model and processing image…\nPlease wait…</string>
+</resources>
