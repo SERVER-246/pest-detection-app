@@ -2,6 +2,7 @@
 .gradle/
 *.apk
 *.aab
+!releases/*.apk
 app/src/main/assets/models/
 app/src/main/assets/*.onnx
 .idea/

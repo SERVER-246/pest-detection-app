@@ -163,13 +163,15 @@ class MainActivity : AppCompatActivity() {
 
                 if (modelPathResult.isFailure) {
                     val error = modelPathResult.exceptionOrNull()?.message ?: "Unknown error"
-                    binding.resultText.text = "❌ MODEL ERROR\n$error"
                     binding.loadingProgressBar.visibility = View.GONE
                     binding.classifyButton.isEnabled = true
 
-                    // Offer to download if not available
-                    if (error.contains("not downloaded")) {
+                    // Offer to download if not available (check for both possible error messages)
+                    if (error.contains("not downloaded") || error.contains("Please download first")) {
                         showDownloadDialog(modelInfo)
+                    } else {
+                        binding.resultText.text = "❌ MODEL ERROR\n$error"
+                        Toast.makeText(this@MainActivity, "Error: $error", Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }

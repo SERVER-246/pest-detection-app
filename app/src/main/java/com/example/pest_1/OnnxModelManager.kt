@@ -445,13 +445,18 @@ class OnnxModelManager(private val context: Context) {
     }
 
     /**
-     * Apply softmax activation
+     * Apply softmax activation with temperature scaling
+     * Lower temperature = more confident (sharper) predictions
+     * Higher temperature = less confident (smoother) predictions
      */
-    private fun softmax(input: FloatArray): FloatArray {
+    private fun softmaxWithTemperature(input: FloatArray, temperature: Float = 1.0f): FloatArray {
         if (input.isEmpty()) return FloatArray(0)
 
-        val max = input.maxOrNull() ?: 0f
-        val exps = input.map { exp((it - max).toDouble()).toFloat() }
+        // Apply temperature scaling
+        val scaled = input.map { it / temperature }
+
+        val max = scaled.maxOrNull() ?: 0f
+        val exps = scaled.map { exp((it - max).toDouble()).toFloat() }
         val sum = exps.sum()
 
         return if (sum == 0f || sum.isNaN()) {
@@ -459,6 +464,13 @@ class OnnxModelManager(private val context: Context) {
         } else {
             exps.map { it / sum }.toFloatArray()
         }
+    }
+
+    /**
+     * Apply softmax activation (backward compatibility)
+     */
+    private fun softmax(input: FloatArray): FloatArray {
+        return softmaxWithTemperature(input, 1.0f)
     }
 
     fun release() {
