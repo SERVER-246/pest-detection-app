@@ -70,21 +70,6 @@ adb install app\build\outputs\apk\debug\app-debug.apk
 - Termite
 - Top borer
 
-## 🏗️ Architecture
-
-```
-app/
-├── MainActivity.kt              # Main UI and user interaction
-├── OnnxModelManager.kt          # ML inference engine
-├── data/
-│   └── model/
-│       ├── ModelInfo.kt         # Model metadata catalog
-│       ├── ModelRepository.kt   # Model access layer
-│       └── ModelDownloader.kt   # Download management
-└── domain/
-    └── model/
-        └── PredictionResult.kt  # Prediction data classes
-```
 
 ## 📦 Models
 
@@ -101,96 +86,6 @@ app/
 | Super Ensemble | 99.96% | 280 MB | 1500ms |
 | ... and 5 more |
 
-## 🔧 Configuration
-
-### Enable Model Downloads
-1. Upload models to GitHub Releases using:
-   ```powershell
-   .\create-github-models.ps1
-   ```
-
-2. Update `app/src/main/java/com/example/pest_1/data/model/ModelInfo.kt`:
-   ```kotlin
-   private const val MODEL_BASE_URL = "https://github.com/YOUR_USERNAME/pest-detection-models/releases/download/v1.0"
-   ```
-
-### Build Variants
-```powershell
-# Debug build (with logging)
-.\gradlew.bat assembleDebug
-
-# Release build (optimized)
-.\gradlew.bat assembleRelease
-```
-
-## 🧪 Testing
-
-See **[TESTING_DEPLOYMENT_GUIDE.md](TESTING_DEPLOYMENT_GUIDE.md)** for complete testing checklist.
-
-### Quick Test
-1. ✅ App installs (no "too large" error)
-2. ✅ App launches without crash
-3. ✅ Image selection works
-4. ✅ Classification produces results
-5. ✅ Results display correctly
-
-### Test with Logs
-```powershell
-adb logcat | Select-String "OnnxModelManager"
-```
-
-## 📁 Important Files
-
-### Documentation
-- `IMPLEMENTATION_SUMMARY.md` - Complete fix implementation details
-- `TESTING_DEPLOYMENT_GUIDE.md` - Full testing checklist
-- `FIXES_IMPLEMENTED.md` - Technical details of bug fixes
-- `ACTION_CHECKLIST.md` - Quick reference
-
-### Scripts
-- `COMPREHENSIVE_SETUP.ps1` - Complete automated setup
-- `VALIDATE.ps1` - Pre-build validation
-- `cleanup_assets.ps1` - Asset cleanup only
-- `create-github-models.ps1` - Model packaging
-
-## 🐛 Troubleshooting
-
-### APK Still Too Large (>100 MB)
-```powershell
-# Verify only mobilenet_v2 in assets
-Get-ChildItem "app\src\main\assets\models" -Directory
-# Should show only: mobilenet_v2
-
-# If other models exist, run cleanup
-.\cleanup_assets.ps1
-
-# Rebuild
-.\gradlew.bat clean assembleDebug
-```
-
-### Classification Not Working
-```powershell
-# Check device logs
-adb logcat | Select-String "pest_1"
-
-# Verify model files exist
-ls app\src\main\assets\models\mobilenet_v2
-# Should see: model.onnx, labels.txt, metadata.json, class_mapping.json
-```
-
-### Can't Download Models
-- MODEL_BASE_URL must be configured with real GitHub URL
-- Device must have internet connection
-- Test URL in browser first
-
-### App Crashes
-```powershell
-# View crash logs
-adb logcat *:E | Select-String "pest_1"
-
-# Check device Android version (needs 7.0+)
-adb shell getprop ro.build.version.release
-```
 
 ## 📈 Performance
 
@@ -217,36 +112,6 @@ Required permissions:
 - **INTERNET** - For downloading models
 - **ACCESS_NETWORK_STATE** - For checking connectivity
 
-## 🏭 Production Deployment
-
-### 1. Configure Signing
-Create keystore and update `app/build.gradle.kts`:
-```kotlin
-signingConfigs {
-    create("release") {
-        storeFile = file("path/to/keystore.jks")
-        storePassword = "your-password"
-        keyAlias = "your-alias"
-        keyPassword = "your-key-password"
-    }
-}
-```
-
-### 2. Build Release APK
-```powershell
-.\gradlew.bat assembleRelease
-```
-
-### 3. Test Release Build
-- Install on multiple devices
-- Verify all features work
-- Check performance metrics
-
-### 4. Deploy
-- Google Play Store (recommended)
-- Direct APK distribution
-- Enterprise deployment (MDM)
-
 ## 📊 Technical Stack
 
 - **Language:** Kotlin
@@ -256,17 +121,9 @@ signingConfigs {
 - **Target SDK:** API 34 (Android 14)
 - **Build System:** Gradle 8.13
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
 ## 📄 License
 
-[Add your license here]
+UnderProcess
 
 ## 📞 Support
 
@@ -278,29 +135,8 @@ For issues, questions, or contributions:
 ## 🎉 Credits
 
 - ONNX Runtime by Microsoft
-- Model training dataset: [Add dataset info]
+- Model training dataset: ICAR-ISRI Crop Protection Division Dataset
 - UI Design: Material Design 3
-
----
-
-## 🚨 Critical Notes
-
-### Before First Build
-⚠️ **IMPORTANT:** Must run asset cleanup to reduce APK from 2GB to 40-60 MB:
-```powershell
-.\COMPREHENSIVE_SETUP.ps1
-```
-
-### Model Hosting
-📤 Models must be uploaded to GitHub Releases for download feature:
-```powershell
-.\create-github-models.ps1
-```
-
-### Testing Priority
-🧪 **Test this first:** MobileNet V2 classification with bundled model (no internet required)
-
----
 
 **Status:** ✅ Ready for Testing  
 **Last Updated:** November 20, 2025  
