@@ -27,6 +27,24 @@ An AI-powered Android application for detecting and classifying pest damage in s
 
 ## 📲 Installation
 
+### Download APK
+
+**Latest Version: v1.0.1** (November 25, 2025)
+
+**What's New in v1.0.1:**
+- ✅ Fixed download dialog not showing for additional models
+- ✅ Improved confidence scores (now matches system testing)
+- ✅ All architecture-specific APKs available
+
+**Download from:** [Releases Folder](https://github.com/SERVER-246/pest-detection-app/tree/main/releases)
+
+**Choose your APK:**
+- **app-universal-debug.apk** (75 MB) - **Recommended** - Works on all devices
+- app-arm64-v8a-debug.apk (31 MB) - Modern ARM phones (2017+)
+- app-armeabi-v7a-debug.apk (27 MB) - Older ARM phones
+- app-x86-debug.apk (33 MB) - Intel tablets
+- app-x86_64-debug.apk (33 MB) - Intel 64-bit devices
+
 ### Requirements
 - Android 7.0 (Nougat) or higher
 - 100 MB free storage space
