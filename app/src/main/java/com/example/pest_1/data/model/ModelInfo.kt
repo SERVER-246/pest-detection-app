@@ -29,8 +29,8 @@ sealed class ModelStatus {
  * Predefined models configuration
  */
 object ModelCatalog {
-    // Base URL for model downloads - CHANGE THIS to your cloud storage URL
-    private const val MODEL_BASE_URL = "https://your-storage-url.com/models"
+    // Base URL for model downloads from GitHub Releases
+    private const val GITHUB_RELEASE_URL = "https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0"
 
     val models = listOf(
         ModelInfo(
@@ -48,7 +48,7 @@ object ModelCatalog {
             accuracy = 99.38f,
             sizeInMB = 162.5f,
             inferenceTimeMs = 450,
-            downloadUrl = "$MODEL_BASE_URL/darknet53.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/darknet53.zip"
         ),
         ModelInfo(
             id = "resnet50",
@@ -56,7 +56,7 @@ object ModelCatalog {
             accuracy = 98.74f,
             sizeInMB = 97.8f,
             inferenceTimeMs = 300,
-            downloadUrl = "$MODEL_BASE_URL/resnet50.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/resnet50.zip"
         ),
         ModelInfo(
             id = "yolo11n-cls",
@@ -64,7 +64,7 @@ object ModelCatalog {
             accuracy = 98.80f,
             sizeInMB = 6.5f,
             inferenceTimeMs = 120,
-            downloadUrl = "$MODEL_BASE_URL/yolo11n-cls.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/yolo11n-cls.zip"
         ),
         ModelInfo(
             id = "inception_v3",
@@ -72,7 +72,7 @@ object ModelCatalog {
             accuracy = 98.58f,
             sizeInMB = 91.2f,
             inferenceTimeMs = 350,
-            downloadUrl = "$MODEL_BASE_URL/inception_v3.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/inception_v3.zip"
         ),
         ModelInfo(
             id = "efficientnet_b0",
@@ -80,7 +80,7 @@ object ModelCatalog {
             accuracy = 98.50f,
             sizeInMB = 20.3f,
             inferenceTimeMs = 180,
-            downloadUrl = "$MODEL_BASE_URL/efficientnet_b0.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/efficientnet_b0.zip"
         ),
         ModelInfo(
             id = "alexnet",
@@ -88,7 +88,7 @@ object ModelCatalog {
             accuracy = 98.03f,
             sizeInMB = 233.1f,
             inferenceTimeMs = 200,
-            downloadUrl = "$MODEL_BASE_URL/alexnet.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/alexnet.zip"
         ),
         ModelInfo(
             id = "ensemble_attention",
@@ -97,7 +97,7 @@ object ModelCatalog {
             sizeInMB = 145.0f,
             inferenceTimeMs = 800,
             isEnsemble = true,
-            downloadUrl = "$MODEL_BASE_URL/ensemble_attention.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/ensemble_attention.zip"
         ),
         ModelInfo(
             id = "ensemble_cross",
@@ -106,7 +106,7 @@ object ModelCatalog {
             sizeInMB = 152.0f,
             inferenceTimeMs = 850,
             isEnsemble = true,
-            downloadUrl = "$MODEL_BASE_URL/ensemble_cross.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/ensemble_cross.zip"
         ),
         ModelInfo(
             id = "ensemble_concat",
@@ -115,7 +115,7 @@ object ModelCatalog {
             sizeInMB = 148.0f,
             inferenceTimeMs = 820,
             isEnsemble = true,
-            downloadUrl = "$MODEL_BASE_URL/ensemble_concat.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/ensemble_concat.zip"
         ),
         ModelInfo(
             id = "super_ensemble",
@@ -124,7 +124,7 @@ object ModelCatalog {
             sizeInMB = 280.0f,
             inferenceTimeMs = 1500,
             isEnsemble = true,
-            downloadUrl = "$MODEL_BASE_URL/super_ensemble.zip"
+            downloadUrl = "$GITHUB_RELEASE_URL/super_ensemble.zip"
         )
     )
 
