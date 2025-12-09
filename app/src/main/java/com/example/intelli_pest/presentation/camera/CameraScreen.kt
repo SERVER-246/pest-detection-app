@@ -4,9 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Matrix
 import android.media.ExifInterface
-import android.net.Uri
 import android.os.Build
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -35,7 +35,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.Executor
 
 /**
@@ -142,20 +141,22 @@ private fun CameraPreview(
         CameraControls(
             isCapturing = isCapturing,
             onCapture = {
-                isCapturing = true
-                captureImage(
-                    context = context,
-                    imageCapture = imageCapture,
-                    executor = executor,
-                    onImageCaptured = { bitmap ->
-                        isCapturing = false
-                        onImageCaptured(bitmap)
-                    },
-                    onError = { error ->
-                        isCapturing = false
-                        onError(error)
-                    }
-                )
+                if (!isCapturing) {
+                    isCapturing = true
+                    captureImage(
+                        context = context,
+                        imageCapture = imageCapture,
+                        executor = executor,
+                        onImageCaptured = { bitmap ->
+                            isCapturing = false
+                            onImageCaptured(bitmap)
+                        },
+                        onError = { error ->
+                            isCapturing = false
+                            onError(error)
+                        }
+                    )
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -355,6 +356,9 @@ private fun PermissionDeniedScreen(
     }
 }
 
+/**
+ * Capture image and return as software bitmap
+ */
 private fun captureImage(
     context: Context,
     imageCapture: ImageCapture?,
@@ -382,12 +386,15 @@ private fun captureImage(
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     try {
-                        // Read the saved file
-                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                        // Load bitmap with options
+                        val options = BitmapFactory.Options().apply {
+                            inPreferredConfig = Bitmap.Config.ARGB_8888
+                        }
+                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath, options)
 
                         if (bitmap == null) {
-                            onError("Failed to decode captured image")
                             photoFile.delete()
+                            onError("Failed to decode captured image")
                             return
                         }
 
@@ -418,6 +425,9 @@ private fun captureImage(
     }
 }
 
+/**
+ * Correct bitmap rotation based on EXIF data
+ */
 private fun correctBitmapRotation(filePath: String, bitmap: Bitmap): Bitmap {
     return try {
         val exif = ExifInterface(filePath)
@@ -445,12 +455,41 @@ private fun correctBitmapRotation(filePath: String, bitmap: Bitmap): Bitmap {
     }
 }
 
+/**
+ * Ensure bitmap is a software ARGB_8888 bitmap
+ * Uses Canvas drawing as the most reliable conversion method
+ */
 private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-               bitmap.config == Bitmap.Config.HARDWARE) {
-        bitmap.copy(Bitmap.Config.ARGB_8888, false)
-    } else {
-        bitmap
+    return try {
+        // Check if conversion is needed
+        val needsConversion = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                bitmap.config == Bitmap.Config.HARDWARE -> true
+            bitmap.config == null -> true
+            bitmap.config != Bitmap.Config.ARGB_8888 -> true
+            else -> false
+        }
+
+        if (needsConversion) {
+            // Create a new ARGB_8888 bitmap and draw the original onto it
+            val softwareBitmap = Bitmap.createBitmap(
+                bitmap.width,
+                bitmap.height,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(softwareBitmap)
+            canvas.drawBitmap(bitmap, 0f, 0f, null)
+            softwareBitmap
+        } else {
+            bitmap
+        }
+    } catch (e: Exception) {
+        // Fallback: try bitmap.copy()
+        try {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+        } catch (e2: Exception) {
+            bitmap
+        }
     }
 }
 
