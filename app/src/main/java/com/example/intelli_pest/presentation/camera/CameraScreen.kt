@@ -1,9 +1,13 @@
 package com.example.intelli_pest.presentation.camera
 
 import android.Manifest
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.media.ExifInterface
+import android.net.Uri
+import android.os.Build
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -31,6 +35,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.Executor
 
 /**
@@ -90,21 +95,25 @@ private fun CameraPreview(
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
                 cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-
-                    val imageCaptureBuilder = ImageCapture.Builder()
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                        .setTargetRotation(previewView.display.rotation)
-
-                    imageCapture = imageCaptureBuilder.build()
-
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
                     try {
+                        val cameraProvider = cameraProviderFuture.get()
+
+                        val preview = Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+                        val imageCaptureBuilder = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+
+                        // Set rotation if display is available
+                        previewView.display?.let { display ->
+                            imageCaptureBuilder.setTargetRotation(display.rotation)
+                        }
+
+                        imageCapture = imageCaptureBuilder.build()
+
+                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
                         cameraProvider.unbindAll()
                         cameraProvider.bindToLifecycle(
                             lifecycleOwner,
@@ -135,6 +144,7 @@ private fun CameraPreview(
             onCapture = {
                 isCapturing = true
                 captureImage(
+                    context = context,
                     imageCapture = imageCapture,
                     executor = executor,
                     onImageCaptured = { bitmap ->
@@ -346,50 +356,101 @@ private fun PermissionDeniedScreen(
 }
 
 private fun captureImage(
+    context: Context,
     imageCapture: ImageCapture?,
     executor: Executor,
     onImageCaptured: (Bitmap) -> Unit,
     onError: (String) -> Unit
 ) {
     if (imageCapture == null) {
-        onError("Camera not ready")
+        onError("Camera not ready. Please try again.")
         return
     }
 
-    val outputOptions = ImageCapture.OutputFileOptions.Builder(
-        File.createTempFile("capture", ".jpg")
-    ).build()
+    try {
+        // Create a temporary file in cache directory
+        val photoFile = File(
+            context.cacheDir,
+            "capture_${System.currentTimeMillis()}.jpg"
+        )
 
-    imageCapture.takePicture(
-        outputOptions,
-        executor,
-        object : ImageCapture.OnImageSavedCallback {
-            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                val savedUri = outputFileResults.savedUri
-                if (savedUri != null) {
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            executor,
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     try {
-                        val inputStream = java.io.FileInputStream(savedUri.path)
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-                        val rotatedBitmap = rotateBitmap(bitmap, 0f)
-                        onImageCaptured(rotatedBitmap)
+                        // Read the saved file
+                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+
+                        if (bitmap == null) {
+                            onError("Failed to decode captured image")
+                            photoFile.delete()
+                            return
+                        }
+
+                        // Get rotation from EXIF data and apply it
+                        val rotatedBitmap = correctBitmapRotation(photoFile.absolutePath, bitmap)
+
+                        // Clean up temp file
+                        photoFile.delete()
+
+                        // Ensure it's a software bitmap
+                        val finalBitmap = ensureSoftwareBitmap(rotatedBitmap)
+
+                        onImageCaptured(finalBitmap)
                     } catch (e: Exception) {
+                        photoFile.delete()
                         onError("Failed to process image: ${e.message}")
                     }
-                } else {
-                    onError("Failed to capture image")
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    photoFile.delete()
+                    onError("Capture failed: ${exception.message}")
                 }
             }
-
-            override fun onError(exception: ImageCaptureException) {
-                onError("Capture failed: ${exception.message}")
-            }
-        }
-    )
+        )
+    } catch (e: Exception) {
+        onError("Failed to capture: ${e.message}")
+    }
 }
 
-private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
-    val matrix = Matrix()
-    matrix.postRotate(degrees)
-    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+private fun correctBitmapRotation(filePath: String, bitmap: Bitmap): Bitmap {
+    return try {
+        val exif = ExifInterface(filePath)
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+
+        val rotationDegrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+
+        if (rotationDegrees != 0f) {
+            val matrix = Matrix()
+            matrix.postRotate(rotationDegrees)
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        } else {
+            bitmap
+        }
+    } catch (e: Exception) {
+        bitmap // Return original on error
+    }
+}
+
+private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+               bitmap.config == Bitmap.Config.HARDWARE) {
+        bitmap.copy(Bitmap.Config.ARGB_8888, false)
+    } else {
+        bitmap
+    }
 }
 

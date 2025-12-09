@@ -31,7 +31,9 @@ fun GalleryPicker(
             try {
                 val bitmap = uriToBitmap(context, uri)
                 if (bitmap != null) {
-                    onImageSelected(bitmap)
+                    // Ensure it's a software bitmap for pixel access
+                    val softwareBitmap = ensureSoftwareBitmap(bitmap)
+                    onImageSelected(softwareBitmap)
                 } else {
                     onError("Failed to load image")
                 }
@@ -49,20 +51,44 @@ fun GalleryPicker(
 }
 
 /**
- * Convert URI to Bitmap
+ * Convert URI to Bitmap - always returns a software bitmap
  */
 private fun uriToBitmap(context: Context, uri: Uri): Bitmap? {
     return try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
-            ImageDecoder.decodeBitmap(source)
+            // Use setMutableRequired to avoid hardware bitmaps
+            ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                decoder.isMutableRequired = false
+            }
         } else {
             @Suppress("DEPRECATION")
             MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
-        null
+        // Fallback: try loading with BitmapFactory
+        try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)
+            }
+        } catch (e2: Exception) {
+            e2.printStackTrace()
+            null
+        }
+    }
+}
+
+/**
+ * Ensure bitmap is a software bitmap (not HARDWARE config)
+ */
+private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+               bitmap.config == Bitmap.Config.HARDWARE) {
+        // Convert HARDWARE bitmap to ARGB_8888 for pixel access
+        bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+    } else {
+        bitmap
     }
 }
 

@@ -86,5 +86,12 @@ class InferenceEngine(
     fun isModelLoaded(): Boolean {
         return onnxModelWrapper.isModelLoaded()
     }
+
+    /**
+     * Get current model path
+     */
+    fun getCurrentModelPath(): String? {
+        return onnxModelWrapper.getCurrentModelPath()
+    }
 }
 

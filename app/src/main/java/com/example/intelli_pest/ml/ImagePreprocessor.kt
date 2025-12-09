@@ -1,6 +1,7 @@
 package com.example.intelli_pest.ml
 
 import android.graphics.Bitmap
+import android.os.Build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -9,8 +10,18 @@ class ImagePreprocessor {
     companion object {
         private const val IMAGE_SIZE = 224
         private const val PIXEL_SIZE = 3 // RGB
-        private const val IMAGE_MEAN = 0.485f
-        private const val IMAGE_STD = 0.229f
+    }
+
+    /**
+     * Convert hardware bitmap to software bitmap for pixel access
+     */
+    private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                   bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            bitmap
+        }
     }
 
     /**
@@ -18,13 +29,19 @@ class ImagePreprocessor {
      * Resizes, normalizes, and converts to the format expected by ONNX model
      */
     fun preprocessImage(bitmap: Bitmap): FloatArray {
+        // Ensure we have a software bitmap for pixel access
+        val softwareBitmap = ensureSoftwareBitmap(bitmap)
+
         // Resize bitmap to required size
-        val resizedBitmap = resizeBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE)
+        val resizedBitmap = resizeBitmap(softwareBitmap, IMAGE_SIZE, IMAGE_SIZE)
+
+        // Ensure resized bitmap is also software bitmap
+        val finalBitmap = ensureSoftwareBitmap(resizedBitmap)
 
         // Convert to float array with normalization
         val floatArray = FloatArray(IMAGE_SIZE * IMAGE_SIZE * PIXEL_SIZE)
         val pixels = IntArray(IMAGE_SIZE * IMAGE_SIZE)
-        resizedBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
+        finalBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
 
         var idx = 0
         for (pixel in pixels) {
@@ -46,22 +63,25 @@ class ImagePreprocessor {
      * Resize bitmap while maintaining aspect ratio and center cropping
      */
     private fun resizeBitmap(bitmap: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
-        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        // First ensure it's a software bitmap
+        val softwareBitmap = ensureSoftwareBitmap(bitmap)
+
+        val aspectRatio = softwareBitmap.width.toFloat() / softwareBitmap.height.toFloat()
         val targetAspectRatio = targetWidth.toFloat() / targetHeight.toFloat()
 
         val scaledBitmap = if (aspectRatio > targetAspectRatio) {
             // Bitmap is wider, scale by height
-            val scaledWidth = (targetHeight * aspectRatio).toInt()
-            Bitmap.createScaledBitmap(bitmap, scaledWidth, targetHeight, true)
+            val scaledWidth = (targetHeight * aspectRatio).toInt().coerceAtLeast(targetWidth)
+            Bitmap.createScaledBitmap(softwareBitmap, scaledWidth, targetHeight, true)
         } else {
             // Bitmap is taller, scale by width
-            val scaledHeight = (targetWidth / aspectRatio).toInt()
-            Bitmap.createScaledBitmap(bitmap, targetWidth, scaledHeight, true)
+            val scaledHeight = (targetWidth / aspectRatio).toInt().coerceAtLeast(targetHeight)
+            Bitmap.createScaledBitmap(softwareBitmap, targetWidth, scaledHeight, true)
         }
 
         // Center crop to target size
-        val x = (scaledBitmap.width - targetWidth) / 2
-        val y = (scaledBitmap.height - targetHeight) / 2
+        val x = ((scaledBitmap.width - targetWidth) / 2).coerceAtLeast(0)
+        val y = ((scaledBitmap.height - targetHeight) / 2).coerceAtLeast(0)
 
         return Bitmap.createBitmap(scaledBitmap, x, y, targetWidth, targetHeight)
     }
@@ -82,25 +102,42 @@ class ImagePreprocessor {
      */
     fun isImageQualitySufficient(bitmap: Bitmap): Boolean {
         // Check minimum resolution
-        if (bitmap.width < 100 || bitmap.height < 100) {
+        if (bitmap.width < 50 || bitmap.height < 50) {
             return false
         }
 
-        // Check if image is not too dark or too bright
-        val pixels = IntArray(bitmap.width * bitmap.height)
-        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        return try {
+            val softwareBitmap = ensureSoftwareBitmap(bitmap)
 
-        var totalBrightness = 0
-        for (pixel in pixels) {
-            val r = (pixel shr 16) and 0xFF
-            val g = (pixel shr 8) and 0xFF
-            val b = pixel and 0xFF
-            totalBrightness += (r + g + b) / 3
+            // Sample center region for brightness check
+            val centerX = softwareBitmap.width / 2
+            val centerY = softwareBitmap.height / 2
+            val sampleSize = minOf(100, softwareBitmap.width / 4, softwareBitmap.height / 4)
+
+            var totalBrightness = 0L
+            var sampleCount = 0
+
+            for (dy in -sampleSize..sampleSize step 10) {
+                for (dx in -sampleSize..sampleSize step 10) {
+                    val x = (centerX + dx).coerceIn(0, softwareBitmap.width - 1)
+                    val y = (centerY + dy).coerceIn(0, softwareBitmap.height - 1)
+                    val pixel = softwareBitmap.getPixel(x, y)
+                    val r = (pixel shr 16) and 0xFF
+                    val g = (pixel shr 8) and 0xFF
+                    val b = pixel and 0xFF
+                    totalBrightness += (r + g + b) / 3
+                    sampleCount++
+                }
+            }
+
+            if (sampleCount == 0) return true
+
+            val avgBrightness = totalBrightness / sampleCount
+            // Image should not be too dark (< 15) or too bright (> 240)
+            avgBrightness in 15..240
+        } catch (e: Exception) {
+            true // Accept on error
         }
-
-        val avgBrightness = totalBrightness / pixels.size
-        // Image should not be too dark (< 20) or too bright (> 235)
-        return avgBrightness in 20..235
     }
 }
 
