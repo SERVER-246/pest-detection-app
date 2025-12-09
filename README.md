@@ -13,24 +13,29 @@
 
 ---
 
-## 📱 Screenshots
+## 📥 Quick Install
 
-| Home Screen | Camera | Results |
-|:-----------:|:------:|:-------:|
-| Beautiful main screen with quick actions | Capture crop images with guided overlay | Instant AI-powered pest detection results |
+### Download APK
+1. Go to [Releases](https://github.com/SERVER-246/pest-detection-app/releases)
+2. Download `intelli_pest-raw.apk` (~570MB)
+3. Install on your Android device (Android 7.0+)
+
+> **Note:** The APK includes the Super Ensemble model (best accuracy). Additional models can be downloaded within the app.
 
 ---
 
 ## ✨ Features
 
-- 🎯 **11 AI Models** - Choose from multiple models for different accuracy/speed tradeoffs
-- 📸 **Easy to Use** - Simply take a photo or select from gallery
-- 📊 **Instant Results** - Get pest classification in seconds
-- 🔌 **Works Offline** - All models bundled for offline use
-- 🎨 **Modern UI** - Clean, intuitive Material Design 3 interface
-- 🛡️ **Image Validation** - Automatically rejects non-crop images
-- 📈 **Confidence Filtering** - Configurable threshold for reliable results
-- 💾 **Detection History** - Save and review past detections
+| Feature | Description |
+|---------|-------------|
+| 🎯 **11 AI Models** | Choose from multiple models for different accuracy/speed tradeoffs |
+| 📸 **Easy to Use** | Simply take a photo or select from gallery |
+| 📊 **Instant Results** | Get pest classification in seconds |
+| 🔌 **Works Offline** | Super Ensemble model bundled for offline use |
+| 📥 **On-Demand Models** | Download additional models as needed |
+| 🎨 **Modern UI** | Clean, intuitive Material Design 3 interface |
+| 🛡️ **Image Validation** | Automatically rejects non-crop images |
+| 📈 **Confidence Filtering** | Configurable threshold for reliable results |
 
 ---
 
@@ -54,323 +59,184 @@
 
 ## 📊 Available AI Models
 
-| Model | Speed | Accuracy | Size | Best For |
-|-------|:-----:|:--------:|:----:|----------|
-| **Super Ensemble** | ~450ms | 96% | 85MB | Best accuracy |
-| Cross-Attention Fusion | ~320ms | 95% | 100MB | High accuracy |
-| Attention Fusion | ~280ms | 94% | 90MB | High accuracy |
-| ResNet-50 | ~200ms | 93% | 98MB | Balanced |
-| Concatenation Fusion | ~250ms | 93% | 95MB | Multi-model fusion |
-| DarkNet-53 | ~300ms | 92% | 160MB | YOLO backbone |
-| Inception V3 | ~220ms | 92% | 90MB | Classic CNN |
-| EfficientNet B0 | ~120ms | 91% | 20MB | Efficient |
-| MobileNet V2 | ~80ms | 89% | 14MB | Fast mobile |
-| AlexNet | ~200ms | 88% | 240MB | Classic |
-| **YOLO 11n** | ~50ms | 87% | 8MB | Ultra fast |
+### Bundled Model (Included in APK)
+| Model | Accuracy | Speed | Size | Status |
+|-------|:--------:|:-----:|:----:|:------:|
+| **Super Ensemble** ⭐ | 96% | ~450ms | 544MB | ✅ Included |
+
+### Downloadable Models (via GitHub)
+| Model | Accuracy | Speed | Size | Download |
+|-------|:--------:|:-----:|:----:|:--------:|
+| Cross-Attention Fusion | 95% | ~320ms | 399MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/cross_attention_fusion.onnx) |
+| Attention Fusion | 94% | ~280ms | 371MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/attention_fusion.onnx) |
+| Concatenation Fusion | 93% | ~250ms | 373MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/concatination_fusion.onnx) |
+| ResNet-50 | 93% | ~200ms | 98MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/resnet50.onnx) |
+| DarkNet-53 | 92% | ~300ms | 81MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/darknet53.onnx) |
+| Inception V3 | 92% | ~220ms | 91MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/inception_v3.onnx) |
+| EfficientNet B0 | 91% | ~120ms | 18MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/efficientnet_b0.onnx) |
+| MobileNet V2 | 89% | ~80ms | 12MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/mobilenet_v2.onnx) |
+| AlexNet | 88% | ~200ms | 172MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/alexnet.onnx) |
+| YOLO 11 Nano | 87% | ~50ms | 18MB | [Download](https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models/yolo_11n.onnx) |
+
+---
+
+## 📱 Installation Guide
+
+### Method 1: Direct APK Install (Recommended)
+
+1. **Download the APK**
+   - Download `intelli_pest-raw.apk` from [Releases](https://github.com/SERVER-246/pest-detection-app/releases)
+
+2. **Enable Unknown Sources** (if not already enabled)
+   - Go to `Settings → Security → Unknown Sources` → Enable
+   - Or when prompted, tap "Settings" and allow installation
+
+3. **Install the APK**
+   - Open the downloaded APK file
+   - Tap "Install"
+   - Wait for installation to complete (~1-2 minutes)
+
+4. **Launch the App**
+   - Find "Intelli-PEST" in your app drawer
+   - Grant camera permission when prompted
+   - Start detecting pests! 🐛
+
+### Method 2: Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/SERVER-246/pest-detection-app.git
+cd pest-detection-app
+
+# Build the APK
+./gradlew assembleRelease
+
+# APK will be at: app/build/outputs/apk/release/app-release.apk
+```
+
+---
+
+## 📱 How to Use
+
+### Step 1: Launch App
+Open Intelli-PEST from your app drawer
+
+### Step 2: Capture or Select Image
+- **Camera:** Tap "Capture Image" → Take photo of affected crop
+- **Gallery:** Tap "Choose from Gallery" → Select existing image
+
+### Step 3: View Results
+- AI processes the image (2-30 seconds depending on model)
+- See detected pest type with confidence score
+- View detailed analysis and recommendations
+
+### Step 4: Take Action
+- Save results to history
+- Detect another image
+- Switch models for comparison
 
 ---
 
 ## 🔧 Technical Specifications
 
 ### Requirements
-| Requirement | Version |
-|-------------|---------|
-| Min SDK | API 24 (Android 7.0) |
-| Target SDK | API 35 (Android 14+) |
-| Compile SDK | API 35 |
-| Kotlin | 1.9+ |
-| Gradle | 8.7+ |
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| Android Version | 7.0 (API 24) | 10.0+ (API 29+) |
+| RAM | 2GB | 4GB+ |
+| Storage | 1GB free | 3GB+ free |
+| Camera | Required | High-res recommended |
 
 ### Tech Stack
-- **Language:** Kotlin
-- **UI Framework:** Jetpack Compose
-- **Design System:** Material Design 3
-- **Architecture:** Clean Architecture + MVVM
-- **ML Runtime:** ONNX Runtime for Android
-- **Camera:** CameraX
-- **Database:** Room
-- **Preferences:** DataStore
-- **Navigation:** Navigation Compose
+| Component | Technology |
+|-----------|------------|
+| Language | Kotlin |
+| UI Framework | Jetpack Compose |
+| Design System | Material Design 3 |
+| Architecture | Clean Architecture + MVVM |
+| ML Runtime | ONNX Runtime |
+| Camera | CameraX |
+| Database | Room |
+| Preferences | DataStore |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Project Structure
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Presentation Layer                    │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │   Screens   │ │  ViewModels │ │   Navigation    │   │
-│  │  (Compose)  │ │   (MVVM)    │ │   (NavHost)     │   │
-│  └─────────────┘ └─────────────┘ └─────────────────┘   │
-├─────────────────────────────────────────────────────────┤
-│                      Domain Layer                        │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │  Use Cases  │ │   Models    │ │  Repositories   │   │
-│  │             │ │  (Domain)   │ │  (Interfaces)   │   │
-│  └─────────────┘ └─────────────┘ └─────────────────┘   │
-├─────────────────────────────────────────────────────────┤
-│                       Data Layer                         │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │    Room     │ │  DataStore  │ │   ML Engine     │   │
-│  │  (History)  │ │   (Prefs)   │ │  (ONNX Runtime) │   │
-│  └─────────────┘ └─────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+app/src/main/
+├── assets/models/           # Bundled ONNX models
+│   └── super_ensemble.onnx  # Default model (544MB)
+├── java/com/example/intelli_pest/
+│   ├── data/                # Data layer
+│   │   ├── model/           # Entities
+│   │   ├── repository/      # Repository implementations
+│   │   └── source/local/    # Local data sources
+│   ├── di/                  # Dependency injection
+│   ├── domain/              # Domain layer
+│   │   ├── model/           # Domain models
+│   │   ├── repository/      # Repository interfaces
+│   │   └── usecase/         # Use cases
+│   ├── ml/                  # Machine learning
+│   │   ├── ImagePreprocessor
+│   │   ├── ImageValidator
+│   │   ├── InferenceEngine
+│   │   └── OnnxModelWrapper
+│   ├── presentation/        # UI layer
+│   │   ├── camera/
+│   │   ├── common/
+│   │   ├── detection/
+│   │   ├── gallery/
+│   │   ├── main/
+│   │   ├── navigation/
+│   │   └── results/
+│   └── ui/theme/            # App theme
+└── res/                     # Resources
 ```
-
-### Project Structure
-```
-app/src/main/java/com/example/intelli_pest/
-├── data/                    # Data layer
-│   ├── model/               # Entity classes
-│   ├── repository/          # Repository implementations
-│   └── source/local/        # Local data sources
-├── di/                      # Dependency injection
-├── domain/                  # Domain layer
-│   ├── model/               # Domain models
-│   ├── repository/          # Repository interfaces
-│   └── usecase/             # Use cases
-├── ml/                      # Machine learning
-│   ├── ImagePreprocessor    # Image preprocessing
-│   ├── ImageValidator       # Image validation
-│   ├── InferenceEngine      # ONNX inference
-│   └── OnnxModelWrapper     # Model wrapper
-├── presentation/            # Presentation layer
-│   ├── camera/              # Camera screen
-│   ├── common/              # Shared components
-│   ├── detection/           # Detection ViewModel
-│   ├── gallery/             # Gallery picker
-│   ├── main/                # Main screen
-│   ├── navigation/          # Navigation
-│   └── results/             # Results screen
-└── ui/theme/                # App theme
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Android Studio Hedgehog (2023.1.1) or later
-- JDK 11 or higher
-- Android device or emulator (API 24+)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SERVER-246/pest-detection-app.git
-   cd pest-detection-app
-   ```
-
-2. **Open in Android Studio**
-   ```
-   File → Open → Select the cloned folder
-   ```
-
-3. **Sync Gradle**
-   ```
-   File → Sync Project with Gradle Files
-   ```
-
-4. **Download Model Files** ⚠️ Important
-   
-   Model files are not included in the repository due to size limits.
-   
-   **Option A: Download from Releases**
-   - Go to [Releases](https://github.com/SERVER-246/pest-detection-app/releases)
-   - Download `models.zip`
-   - Extract to `app/src/main/assets/models/`
-   
-   **Option B: Use your own models**
-   - Train your own models using PyTorch/TensorFlow
-   - Export to ONNX format
-   - Place in `app/src/main/assets/models/`
-   
-   **Required model structure:**
-   ```
-   app/src/main/assets/models/
-   ├── super_ensemble.onnx    # Required (default model)
-   └── [other models].onnx    # Optional
-   ```
-
-5. **Build the project**
-   ```bash
-   ./gradlew build
-   ```
-
-6. **Run on device/emulator**
-   ```bash
-   ./gradlew installDebug
-   ```
-   Or press `Shift+F10` in Android Studio
-
----
-
-## 📱 Usage
-
-### Basic Flow
-
-1. **Launch the app** → Beautiful home screen appears
-2. **Capture Image** → Tap "Capture Image" to use camera
-3. **Or Select from Gallery** → Tap "Choose from Gallery"
-4. **Wait for Detection** → AI processes the image (2-30 seconds)
-5. **View Results** → See pest type with confidence score
-6. **Take Action** → Save to history or detect another
-
-### Tips for Best Results
-
-- 📸 Use clear, well-lit images
-- 🎯 Center the affected area in frame
-- 📐 Maintain proper distance (not too close/far)
-- 🌿 Ensure leaf/crop is clearly visible
-- ☀️ Avoid extreme lighting conditions
-
----
-
-## 📁 Model Files
-
-### Location
-```
-app/src/main/assets/models/
-├── super_ensemble.onnx      # Required (default)
-├── alexnet.onnx             # Optional
-├── attention_fusion.onnx    # Optional
-├── concatination_fusion.onnx
-├── cross_attention_fusion.onnx
-├── darknet53.onnx
-├── efficentnet_b0.onnx
-├── inception_v3.onnx
-├── mobilenet_v2.onnx
-├── resnet50.onnx
-└── yolo_11n.onnx
-```
-
-### Model Format
-- **Input Shape:** `[1, 3, 224, 224]` (NCHW format)
-- **Output Shape:** `[1, 11]` (11 pest classes)
-- **Data Type:** float32
-- **Format:** ONNX (opset 11-13)
-
-### Training Your Own Models
-
-If you want to train custom models:
-
-1. Prepare dataset with 11 pest classes
-2. Train using PyTorch/TensorFlow
-3. Export to ONNX format:
-   ```python
-   torch.onnx.export(model, dummy_input, "model.onnx",
-                     input_names=['input'],
-                     output_names=['output'],
-                     dynamic_axes={'input': {0: 'batch'},
-                                   'output': {0: 'batch'}})
-   ```
-4. Place in `assets/models/` folder
-
----
-
-## 🧪 Testing
-
-### Run Unit Tests
-```bash
-./gradlew test
-```
-
-### Run Instrumented Tests
-```bash
-./gradlew connectedAndroidTest
-```
-
-### Manual Testing Checklist
-- [ ] App launches without crash
-- [ ] Camera opens and captures images
-- [ ] Gallery selection works
-- [ ] Detection completes successfully
-- [ ] Results display correctly
-- [ ] Non-crop images are rejected
-- [ ] All models load and work
-- [ ] History saves correctly
-
----
-
-## 🛠️ Build Variants
-
-| Variant | Description |
-|---------|-------------|
-| **debug** | Development build with logging |
-| **release** | Production build with ProGuard |
-
-### Generate Release APK
-```bash
-./gradlew assembleRelease
-```
-
-### Generate App Bundle (AAB)
-```bash
-./gradlew bundleRelease
-```
-
----
-
-## 📊 Performance
-
-### Benchmarks (Mid-range device)
-
-| Model | Load Time | Inference | Memory |
-|-------|:---------:|:---------:|:------:|
-| YOLO 11n | 200ms | 50ms | 150MB |
-| MobileNet V2 | 300ms | 80ms | 180MB |
-| EfficientNet B0 | 400ms | 120ms | 200MB |
-| Super Ensemble | 800ms | 450ms | 350MB |
-
-### Optimization Tips
-
-1. **For speed:** Use YOLO 11n or MobileNet V2
-2. **For accuracy:** Use Super Ensemble
-3. **For balance:** Use EfficientNet B0
-4. **Memory issues:** Close background apps
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Installation Issues
 
-| Issue | Solution |
-|-------|----------|
-| App crashes on launch | Check if model files exist in assets |
-| Camera not working | Grant camera permission in settings |
-| Detection always fails | Use clearer images with visible crops |
-| Out of memory | Use smaller models (YOLO, MobileNet) |
-| Slow performance | First run is slower (model loading) |
+| Problem | Solution |
+|---------|----------|
+| "App not installed" | Enable Unknown Sources in Settings |
+| "Parse error" | Re-download APK, file may be corrupted |
+| Installation blocked | Disable Play Protect temporarily |
 
-### Debug Mode
+### Runtime Issues
 
-Enable verbose logging:
-```kotlin
-// In InferenceEngine.kt
-private const val DEBUG = true
-```
+| Problem | Solution |
+|---------|----------|
+| App crashes on launch | Clear app data, reinstall |
+| Camera not working | Grant camera permission in Settings |
+| Detection fails | Use clearer images, ensure good lighting |
+| Out of memory | Close background apps, use smaller models |
+| Slow detection | First run is slower (model loading), try YOLO for speed |
+
+---
+
+## 📊 Performance Tips
+
+1. **Best Accuracy:** Use Super Ensemble (bundled)
+2. **Fastest Detection:** Download YOLO 11 Nano (50ms)
+3. **Balanced Performance:** Download EfficientNet B0
+4. **Low Memory Devices:** Use MobileNet V2 or YOLO 11 Nano
+5. **First Run:** Slower due to model initialization (cached after)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-### Code Style
-
-- Follow Kotlin coding conventions
-- Use meaningful variable/function names
-- Add comments for complex logic
-- Write unit tests for new features
 
 ---
 
@@ -378,29 +244,12 @@ Contributions are welcome! Please follow these steps:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```
-MIT License
+---
 
-Copyright (c) 2025 SERVER-246
+## 👤 Author
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+**SERVER-246**
+- GitHub: [@SERVER-246](https://github.com/SERVER-246)
 
 ---
 
@@ -414,26 +263,16 @@ SOFTWARE.
 
 ---
 
-## 📞 Contact
+## 📈 Version History
 
-**Project Link:** [https://github.com/SERVER-246/pest-detection-app](https://github.com/SERVER-246/pest-detection-app)
-
----
-
-## 📈 Roadmap
-
-- [x] Core detection functionality
-- [x] 11 AI models integration
-- [x] Camera & gallery support
-- [x] Material Design 3 UI
-- [x] Image validation
-- [x] Detection history
-- [ ] Model management UI
-- [ ] Settings screen
-- [ ] Export reports
-- [ ] Cloud sync
-- [ ] Multi-language support
-- [ ] iOS version
+### v1.0.0 (December 2025)
+- ✅ Initial release
+- ✅ 11 AI models (1 bundled, 10 downloadable)
+- ✅ Camera & gallery support
+- ✅ Material Design 3 UI
+- ✅ Image validation
+- ✅ Detection history
+- ✅ Offline support with Super Ensemble
 
 ---
 

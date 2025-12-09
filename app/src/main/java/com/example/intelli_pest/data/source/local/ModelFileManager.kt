@@ -13,6 +13,11 @@ class ModelFileManager(private val context: Context) {
 
     private val modelsDir = File(context.filesDir, "models")
 
+    companion object {
+        // GitHub release URL for model downloads
+        private const val GITHUB_MODELS_URL = "https://github.com/SERVER-246/pest-detection-app/releases/download/v1.0.0-models"
+    }
+
     init {
         // Create models directory if it doesn't exist
         if (!modelsDir.exists()) {
@@ -28,7 +33,7 @@ class ModelFileManager(private val context: Context) {
     }
 
     /**
-     * Check if model file exists
+     * Check if model file exists in downloaded folder
      */
     fun isModelDownloaded(modelId: String): Boolean {
         val modelFile = File(modelsDir, "$modelId.onnx")
@@ -80,29 +85,29 @@ class ModelFileManager(private val context: Context) {
     }
 
     /**
-     * Get all available models (both bundled and downloaded)
-     * Updated to match actual model files in assets
+     * Get all available models (bundled + downloadable)
      */
     suspend fun getAllAvailableModels(): List<ModelInfo> = withContext(Dispatchers.IO) {
         val models = mutableListOf<ModelInfo>()
 
-        // 1. Super Ensemble Model (Main - bundled)
+        // 1. Super Ensemble Model (BUNDLED - included in APK)
         models.add(
             ModelInfo(
                 id = "super_ensemble",
                 name = "super_ensemble",
                 displayName = "Super Ensemble",
-                description = "High accuracy ensemble model combining multiple architectures",
+                description = "High accuracy ensemble model - INCLUDED",
                 accuracy = 0.96f,
                 inferenceSpeedMs = 450,
-                sizeInMb = 85f,
+                sizeInMb = 544f,
                 isDownloaded = isModelDownloaded("super_ensemble"),
                 isBundled = isModelBundled("super_ensemble"),
-                version = "1.0.0"
+                version = "1.0.0",
+                downloadUrl = null // Bundled, no download needed
             )
         )
 
-        // 2. AlexNet
+        // 2. AlexNet (Downloadable)
         models.add(
             ModelInfo(
                 id = "alexnet",
@@ -111,14 +116,14 @@ class ModelFileManager(private val context: Context) {
                 description = "Classic deep CNN architecture",
                 accuracy = 0.88f,
                 inferenceSpeedMs = 200,
-                sizeInMb = 240f,
+                sizeInMb = 172f,
                 isDownloaded = isModelDownloaded("alexnet"),
-                isBundled = isModelBundled("alexnet"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/alexnet.onnx"
             )
         )
 
-        // 3. Attention Fusion
+        // 3. Attention Fusion (Downloadable)
         models.add(
             ModelInfo(
                 id = "attention_fusion",
@@ -127,14 +132,14 @@ class ModelFileManager(private val context: Context) {
                 description = "Attention-based fusion model for enhanced feature learning",
                 accuracy = 0.94f,
                 inferenceSpeedMs = 280,
-                sizeInMb = 90f,
+                sizeInMb = 371f,
                 isDownloaded = isModelDownloaded("attention_fusion"),
-                isBundled = isModelBundled("attention_fusion"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/attention_fusion.onnx"
             )
         )
 
-        // 4. Concatenation Fusion
+        // 4. Concatenation Fusion (Downloadable)
         models.add(
             ModelInfo(
                 id = "concatination_fusion",
@@ -143,14 +148,14 @@ class ModelFileManager(private val context: Context) {
                 description = "Multi-model fusion using concatenation",
                 accuracy = 0.93f,
                 inferenceSpeedMs = 250,
-                sizeInMb = 95f,
+                sizeInMb = 373f,
                 isDownloaded = isModelDownloaded("concatination_fusion"),
-                isBundled = isModelBundled("concatination_fusion"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/concatination_fusion.onnx"
             )
         )
 
-        // 5. Cross-Attention Fusion
+        // 5. Cross-Attention Fusion (Downloadable)
         models.add(
             ModelInfo(
                 id = "cross_attention_fusion",
@@ -159,14 +164,14 @@ class ModelFileManager(private val context: Context) {
                 description = "Advanced fusion with cross-attention mechanism",
                 accuracy = 0.95f,
                 inferenceSpeedMs = 320,
-                sizeInMb = 100f,
+                sizeInMb = 399f,
                 isDownloaded = isModelDownloaded("cross_attention_fusion"),
-                isBundled = isModelBundled("cross_attention_fusion"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/cross_attention_fusion.onnx"
             )
         )
 
-        // 6. DarkNet-53
+        // 6. DarkNet-53 (Downloadable)
         models.add(
             ModelInfo(
                 id = "darknet53",
@@ -175,46 +180,46 @@ class ModelFileManager(private val context: Context) {
                 description = "Powerful backbone from YOLO architecture",
                 accuracy = 0.92f,
                 inferenceSpeedMs = 300,
-                sizeInMb = 160f,
+                sizeInMb = 81f,
                 isDownloaded = isModelDownloaded("darknet53"),
-                isBundled = isModelBundled("darknet53"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/darknet53.onnx"
             )
         )
 
-        // 7. EfficientNet B0 (note: filename has typo efficentnet)
+        // 7. EfficientNet B0 (Downloadable)
         models.add(
             ModelInfo(
-                id = "efficentnet_b0",
-                name = "efficentnet_b0",
+                id = "efficientnet_b0",
+                name = "efficientnet_b0",
                 displayName = "EfficientNet B0",
                 description = "Balanced accuracy and efficiency",
                 accuracy = 0.91f,
                 inferenceSpeedMs = 120,
-                sizeInMb = 20f,
-                isDownloaded = isModelDownloaded("efficentnet_b0"),
-                isBundled = isModelBundled("efficentnet_b0"),
-                downloadUrl = null
+                sizeInMb = 18f,
+                isDownloaded = isModelDownloaded("efficientnet_b0"),
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/efficientnet_b0.onnx"
             )
         )
 
-        // 8. Inception V3
+        // 8. Inception V3 (Downloadable)
         models.add(
             ModelInfo(
                 id = "inception_v3",
                 name = "inception_v3",
                 displayName = "Inception V3",
-                description = "Google's inception architecture with auxiliary classifiers",
+                description = "Google's inception architecture",
                 accuracy = 0.92f,
                 inferenceSpeedMs = 220,
-                sizeInMb = 90f,
+                sizeInMb = 91f,
                 isDownloaded = isModelDownloaded("inception_v3"),
-                isBundled = isModelBundled("inception_v3"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/inception_v3.onnx"
             )
         )
 
-        // 9. MobileNet V2
+        // 9. MobileNet V2 (Downloadable)
         models.add(
             ModelInfo(
                 id = "mobilenet_v2",
@@ -223,14 +228,14 @@ class ModelFileManager(private val context: Context) {
                 description = "Lightweight model optimized for mobile devices",
                 accuracy = 0.89f,
                 inferenceSpeedMs = 80,
-                sizeInMb = 14f,
+                sizeInMb = 12f,
                 isDownloaded = isModelDownloaded("mobilenet_v2"),
-                isBundled = isModelBundled("mobilenet_v2"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/mobilenet_v2.onnx"
             )
         )
 
-        // 10. ResNet-50
+        // 10. ResNet-50 (Downloadable)
         models.add(
             ModelInfo(
                 id = "resnet50",
@@ -241,24 +246,24 @@ class ModelFileManager(private val context: Context) {
                 inferenceSpeedMs = 200,
                 sizeInMb = 98f,
                 isDownloaded = isModelDownloaded("resnet50"),
-                isBundled = isModelBundled("resnet50"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/resnet50.onnx"
             )
         )
 
-        // 11. YOLO 11n
+        // 11. YOLO 11n (Downloadable)
         models.add(
             ModelInfo(
                 id = "yolo_11n",
                 name = "yolo_11n",
                 displayName = "YOLO 11 Nano",
-                description = "Ultra-fast YOLO object detection variant",
+                description = "Ultra-fast detection variant",
                 accuracy = 0.87f,
                 inferenceSpeedMs = 50,
-                sizeInMb = 8f,
+                sizeInMb = 18f,
                 isDownloaded = isModelDownloaded("yolo_11n"),
-                isBundled = isModelBundled("yolo_11n"),
-                downloadUrl = null
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/yolo_11n.onnx"
             )
         )
 
@@ -272,6 +277,25 @@ class ModelFileManager(private val context: Context) {
         try {
             val modelFile = File(modelsDir, "$modelId.onnx")
             modelFile.writeBytes(data)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Copy bundled model to internal storage if needed
+     */
+    suspend fun copyBundledModelToInternal(modelId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val inputStream = context.assets.open("models/$modelId.onnx")
+            val outputFile = File(modelsDir, "$modelId.onnx")
+            inputStream.use { input ->
+                outputFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
             true
         } catch (e: Exception) {
             e.printStackTrace()

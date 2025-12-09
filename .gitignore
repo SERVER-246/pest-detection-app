@@ -28,6 +28,13 @@ proguard/
 # Log Files
 *.log
 
+# Models backup (not for git - upload to releases)
+models_backup/
+
+# Keystore files
+*.keystore
+*.jks
+
 # Android Studio Navigation editor temp files
 .navigation/
 
