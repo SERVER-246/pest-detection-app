@@ -65,7 +65,7 @@ private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
                 decoder.isMutableRequired = false
             }
             return ensureSoftwareBitmap(bitmap)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Fall through to next method
         }
     }
@@ -75,7 +75,7 @@ private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
         @Suppress("DEPRECATION")
         val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
         return ensureSoftwareBitmap(bitmap)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // Fall through to next method
     }
 
@@ -89,7 +89,7 @@ private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
             val bitmap = BitmapFactory.decodeStream(inputStream, null, options)
             return bitmap?.let { ensureSoftwareBitmap(it) }
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // Fall through to next method
     }
 
@@ -102,7 +102,7 @@ private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
             val bitmap = BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor, null, options)
             return bitmap?.let { ensureSoftwareBitmap(it) }
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // All methods failed
     }
 
@@ -138,11 +138,11 @@ private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
         } else {
             bitmap
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // Fallback: try bitmap.copy()
         try {
             bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-        } catch (e2: Exception) {
+        } catch (_: Exception) {
             bitmap
         }
     }
