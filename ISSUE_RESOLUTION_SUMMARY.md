@@ -82,23 +82,6 @@ private fun toSoftwareBitmap(bitmap: Bitmap): Bitmap {
 ✅ All critical paths verified
 ```
 
----
-
-## 📱 APK Ready for Testing
-
-### Location:
-```
-D:\App\Intelli_PEST\app\build\outputs\apk\debug\app-debug.apk
-```
-
-### Installation:
-```bash
-adb install -r "D:\App\Intelli_PEST\app\build\outputs\apk\debug\app-debug.apk"
-```
-
-Or simply copy to device and install manually.
-
----
 
 ## 🧪 Testing Instructions
 
@@ -119,13 +102,7 @@ Or simply copy to device and install manually.
 5. Wait for detection result
 6. Verify result is displayed
 
-### Test Image Available:
-```
-D:\Test-images\Internode borer\Real time Cane\IMG_0742.JPG
-```
-Use this image to test gallery import with a known pest type.
 
----
 
 ## 🔍 Root Cause Explanation
 
