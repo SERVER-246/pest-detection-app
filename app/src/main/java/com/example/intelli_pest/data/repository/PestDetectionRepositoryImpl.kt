@@ -83,12 +83,15 @@ class PestDetectionRepositoryImpl(
             val qualityGood = inferenceEngine.checkImageQuality(bitmap)
 
             if (!qualityGood) {
-                Resource.Error("Image quality is too low. Please capture a clearer image.")
+                // Still allow detection, just warn about quality
+                Resource.Success(true)
             } else {
                 Resource.Success(isValid)
             }
         } catch (e: Exception) {
-            Resource.Error("Image validation error: ${e.message}", e)
+            // On ANY validation error, allow the image through
+            // Let the model decide if it can process it
+            Resource.Success(true)
         }
     }
 
@@ -193,12 +196,6 @@ class PestDetectionRepositoryImpl(
             e.printStackTrace()
             ""
         }
-    }
-
-    private fun InferenceEngine.getCurrentModelPath(): String? {
-        // This would need to be tracked in InferenceEngine
-        // For now return null to always reload
-        return null
     }
 }
 

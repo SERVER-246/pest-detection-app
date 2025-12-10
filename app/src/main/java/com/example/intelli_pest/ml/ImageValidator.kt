@@ -2,35 +2,12 @@ package com.example.intelli_pest.ml
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.os.Build
 
 /**
  * Validates if an image is suitable for pest detection
  * Filters out unrelated images (non-sugarcane crops)
  */
 class ImageValidator {
-
-    /**
-     * Convert hardware bitmap to software bitmap for pixel access
-     * Returns the original bitmap if conversion fails
-     */
-    private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                bitmap.config == Bitmap.Config.HARDWARE) {
-                // Convert HARDWARE bitmap to ARGB_8888 for pixel access
-                bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-            } else if (bitmap.config == null) {
-                // Handle null config case
-                bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-            } else {
-                bitmap
-            }
-        } catch (e: Exception) {
-            // If conversion fails, return original
-            bitmap
-        }
-    }
 
     /**
      * Safely get pixel from bitmap, returns default color on failure
@@ -42,7 +19,7 @@ class ImageValidator {
             } else {
                 Color.GRAY
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Color.GRAY
         }
     }
@@ -52,22 +29,21 @@ class ImageValidator {
      * Returns true by default on any error to avoid blocking valid images
      */
     fun isValidSugarcaneCropImage(bitmap: Bitmap): Boolean {
+        // This function now assumes it receives a software bitmap.
+        // The conversion is handled at the source (Camera/Gallery).
         return try {
-            // Always convert to software bitmap first
-            val softwareBitmap = ensureSoftwareBitmap(bitmap)
-
             // If we still can't access pixels, just accept the image
-            if (!canAccessPixels(softwareBitmap)) {
+            if (!canAccessPixels(bitmap)) {
                 return true
             }
 
             // Multiple validation checks with safe pixel access
-            val hasGreenContent = checkGreenContentSafe(softwareBitmap)
-            val hasProperColorDistribution = checkColorDistributionSafe(softwareBitmap)
-            val hasTextureVariation = checkTextureVariationSafe(softwareBitmap)
-            val qualityCheck = checkBasicQualitySafe(softwareBitmap)
+            val hasGreenContent = checkGreenContentSafe(bitmap)
+            val hasProperColorDistribution = checkColorDistributionSafe(bitmap)
+            val hasTextureVariation = checkTextureVariationSafe(bitmap)
+            val qualityCheck = checkBasicQualitySafe(bitmap)
 
-            // Image is valid if it passes at least 2 checks
+            // Image is valid if it passes at least 1 check (very lenient)
             val checksPassedCount = listOf(
                 hasGreenContent,
                 hasProperColorDistribution,
@@ -75,8 +51,8 @@ class ImageValidator {
                 qualityCheck
             ).count { it }
 
-            checksPassedCount >= 2
-        } catch (e: Exception) {
+            checksPassedCount >= 1
+        } catch (_: Exception) {
             // On ANY error, accept the image and let the model decide
             true
         }
@@ -87,14 +63,13 @@ class ImageValidator {
      */
     private fun canAccessPixels(bitmap: Bitmap): Boolean {
         return try {
-            // Try to access a single pixel
             if (bitmap.width > 0 && bitmap.height > 0) {
                 bitmap.getPixel(0, 0)
                 true
             } else {
                 false
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -115,7 +90,7 @@ class ImageValidator {
                     val g = Color.green(pixel)
                     val b = Color.blue(pixel)
 
-                    if (g > r * 0.8 && g > b * 0.8 && g > 30) {
+                    if (g > r * 0.7 && g > b * 0.7 && g > 20) {
                         greenPixelCount++
                     }
                     totalSamples++
@@ -124,8 +99,8 @@ class ImageValidator {
 
             if (totalSamples == 0) return true
             val greenPercentage = greenPixelCount.toFloat() / totalSamples
-            greenPercentage >= 0.10f // Very lenient: 10%
-        } catch (e: Exception) {
+            greenPercentage >= 0.05f // Very lenient: 5%
+        } catch (_: Exception) {
             true
         }
     }
@@ -152,10 +127,10 @@ class ImageValidator {
             }
 
             if (totalSamples == 0) return true
-            // Just check it's not completely black or white
+            // Just check it's not completely black
             val avgBrightness = (redSum + greenSum + blueSum) / (3 * totalSamples)
-            avgBrightness in 10..245
-        } catch (e: Exception) {
+            avgBrightness > 5
+        } catch (_: Exception) {
             true
         }
     }
@@ -182,8 +157,8 @@ class ImageValidator {
             val variance = brightnessValues.map { (it - mean) * (it - mean) }.average()
             val stdDev = kotlin.math.sqrt(variance)
 
-            stdDev > 5.0 // Very lenient threshold
-        } catch (e: Exception) {
+            stdDev > 3.0 // Very lenient threshold
+        } catch (_: Exception) {
             true
         }
     }
@@ -193,19 +168,12 @@ class ImageValidator {
      */
     private fun checkBasicQualitySafe(bitmap: Bitmap): Boolean {
         return try {
-            // Minimum resolution check
-            if (bitmap.width < 50 || bitmap.height < 50) {
+            // Minimum resolution check - very lenient
+            if (bitmap.width < 10 || bitmap.height < 10) {
                 return false
             }
-
-            // Check center brightness
-            val centerX = bitmap.width / 2
-            val centerY = bitmap.height / 2
-            val centerPixel = safeGetPixel(bitmap, centerX, centerY)
-            val brightness = (Color.red(centerPixel) + Color.green(centerPixel) + Color.blue(centerPixel)) / 3
-
-            brightness in 5..250
-        } catch (e: Exception) {
+            true // Accept most images
+        } catch (_: Exception) {
             true
         }
     }
@@ -215,21 +183,20 @@ class ImageValidator {
      */
     fun getValidationConfidence(bitmap: Bitmap): Float {
         return try {
-            val softwareBitmap = ensureSoftwareBitmap(bitmap)
-
-            if (!canAccessPixels(softwareBitmap)) {
-                return 0.75f // Return moderate confidence if can't access pixels
+            // The bitmap is now assumed to be software-based.
+            if (!canAccessPixels(bitmap)) {
+                return 0.75f
             }
 
             val checks = listOf(
-                checkGreenContentSafe(softwareBitmap),
-                checkColorDistributionSafe(softwareBitmap),
-                checkTextureVariationSafe(softwareBitmap),
-                checkBasicQualitySafe(softwareBitmap)
+                checkGreenContentSafe(bitmap),
+                checkColorDistributionSafe(bitmap),
+                checkTextureVariationSafe(bitmap),
+                checkBasicQualitySafe(bitmap)
             )
 
             checks.count { it }.toFloat() / checks.size
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0.75f
         }
     }

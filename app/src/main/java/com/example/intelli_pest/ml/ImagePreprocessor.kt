@@ -15,53 +15,15 @@ class ImagePreprocessor {
     }
 
     /**
-     * Convert any bitmap to a software ARGB_8888 bitmap for pixel access
-     * This handles HARDWARE bitmaps, null configs, and other edge cases
-     */
-    private fun toSoftwareBitmap(bitmap: Bitmap): Bitmap {
-        return try {
-            // Check if we need to convert
-            val needsConversion = when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                    bitmap.config == Bitmap.Config.HARDWARE -> true
-                bitmap.config == null -> true
-                bitmap.config != Bitmap.Config.ARGB_8888 -> true
-                else -> false
-            }
-
-            if (needsConversion) {
-                // Create a new ARGB_8888 bitmap and draw the original onto it
-                val softwareBitmap = Bitmap.createBitmap(
-                    bitmap.width,
-                    bitmap.height,
-                    Bitmap.Config.ARGB_8888
-                )
-                val canvas = Canvas(softwareBitmap)
-                canvas.drawBitmap(bitmap, 0f, 0f, null)
-                softwareBitmap
-            } else {
-                bitmap
-            }
-        } catch (e: Exception) {
-            // Last resort: try copy
-            try {
-                bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-            } catch (e2: Exception) {
-                bitmap
-            }
-        }
-    }
-
-    /**
      * Preprocess bitmap for model inference
      * Resizes, normalizes, and converts to the format expected by ONNX model
      */
     fun preprocessImage(bitmap: Bitmap): FloatArray {
-        // First convert to software bitmap
-        val softwareBitmap = toSoftwareBitmap(bitmap)
+        // This function now assumes it receives a software bitmap.
+        // The conversion is handled at the source (Camera/Gallery).
 
         // Resize bitmap to required size
-        val resizedBitmap = resizeBitmap(softwareBitmap, IMAGE_SIZE, IMAGE_SIZE)
+        val resizedBitmap = resizeBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE)
 
         // Convert to float array with normalization
         val floatArray = FloatArray(IMAGE_SIZE * IMAGE_SIZE * PIXEL_SIZE)
@@ -83,7 +45,7 @@ class ImagePreprocessor {
                 floatArray[idx++] = (b - 0.406f) / 0.225f
             }
         } catch (e: Exception) {
-            // If getPixels fails, try pixel by pixel
+            // If getPixels fails, try pixel by pixel as a fallback
             var idx = 0
             for (y in 0 until IMAGE_SIZE) {
                 for (x in 0 until IMAGE_SIZE) {
@@ -97,7 +59,7 @@ class ImagePreprocessor {
                         floatArray[idx++] = (g - 0.456f) / 0.224f
                         floatArray[idx++] = (b - 0.406f) / 0.225f
                     } catch (e2: Exception) {
-                        // Use neutral gray values
+                        // Use neutral gray values if single pixel access fails
                         floatArray[idx++] = 0f
                         floatArray[idx++] = 0f
                         floatArray[idx++] = 0f
@@ -205,6 +167,44 @@ class ImagePreprocessor {
             avgBrightness in 10..245
         } catch (e: Exception) {
             true // Accept on error
+        }
+    }
+
+    /**
+     * Convert any bitmap to a software ARGB_8888 bitmap suitable for pixel operations
+     * Uses Canvas drawing as the most reliable conversion method
+     */
+    private fun toSoftwareBitmap(bitmap: Bitmap): Bitmap {
+        return try {
+            // Check if conversion is needed
+            val needsConversion = when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    bitmap.config == Bitmap.Config.HARDWARE -> true
+                bitmap.config == null -> true
+                bitmap.config != Bitmap.Config.ARGB_8888 -> true
+                else -> false
+            }
+
+            if (needsConversion) {
+                // Create a new ARGB_8888 bitmap and draw the original onto it
+                val softwareBitmap = Bitmap.createBitmap(
+                    bitmap.width,
+                    bitmap.height,
+                    Bitmap.Config.ARGB_8888
+                )
+                val canvas = Canvas(softwareBitmap)
+                canvas.drawBitmap(bitmap, 0f, 0f, null)
+                softwareBitmap
+            } else {
+                bitmap
+            }
+        } catch (e: Exception) {
+            // Fallback: try bitmap.copy()
+            try {
+                bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+            } catch (e2: Exception) {
+                bitmap
+            }
         }
     }
 }

@@ -15,18 +15,31 @@ class DetectPestUseCase(
         bitmap: Bitmap,
         modelId: String = "super_ensemble"
     ): Resource<DetectionResult> {
-        // First validate the image
-        return when (val validationResult = repository.validateImage(bitmap)) {
+        // Try validation but don't block on failure
+        val validationResult = try {
+            repository.validateImage(bitmap)
+        } catch (e: Exception) {
+            // If validation crashes, proceed anyway
+            Resource.Success(true)
+        }
+
+        return when (validationResult) {
             is Resource.Success -> {
-                if (validationResult.data) {
-                    // Image is valid, proceed with detection
+                // Proceed with detection regardless of validation result
+                // The model will handle invalid images appropriately
+                try {
                     repository.detectPest(bitmap, modelId)
-                } else {
-                    Resource.Error("Image does not appear to be a sugarcane crop image. Please capture a clear image of the crop.")
+                } catch (e: Exception) {
+                    Resource.Error("Detection failed: ${e.message}")
                 }
             }
             is Resource.Error -> {
-                Resource.Error("Failed to validate image: ${validationResult.message}")
+                // Validation had an error, but try detection anyway
+                try {
+                    repository.detectPest(bitmap, modelId)
+                } catch (e: Exception) {
+                    Resource.Error("Detection failed: ${e.message}")
+                }
             }
             is Resource.Loading -> Resource.Loading
         }
