@@ -115,10 +115,6 @@ Gallery Selection → URI → Multiple Load Attempts
 - [ ] Verify detection runs
 - [ ] Check results display
 
-#### Test Image Available:
-📁 `D:\Test-images\Internode borer\Real time Cane\IMG_0742.JPG`
-
-Use this image to test gallery import functionality.
 
 ---
 
@@ -165,21 +161,6 @@ private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
 4. ✅ `GalleryPicker.kt` - Multiple loading methods with conversion
 5. ✅ `BitmapUtils.kt` - Centralized conversion utility
 
----
-
-## 🚀 APK Status
-
-### Debug APK Location:
-```
-D:\App\Intelli_PEST\app\build\outputs\apk\debug\app-debug.apk
-```
-
-### APK Size: ~550MB (with super_ensemble model bundled)
-
-### Installation Command:
-```bash
-adb install -r "D:\App\Intelli_PEST\app\build\outputs\apk\debug\app-debug.apk"
-```
 
 ---
 
