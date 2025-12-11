@@ -3,8 +3,6 @@ package com.example.intelli_pest.ml
 import android.content.Context
 import android.graphics.Bitmap
 import com.example.intelli_pest.domain.model.DetectionResult
-import com.example.intelli_pest.domain.model.ModelInfo
-import com.example.intelli_pest.domain.model.PestType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,14 +13,14 @@ class InferenceEngine(
     private val context: Context
 ) {
     private val imagePreprocessor = ImagePreprocessor()
-    private val onnxModelWrapper = OnnxModelWrapper(context, imagePreprocessor)
+    private val tfliteModelWrapper = TFLiteModelWrapper(context, imagePreprocessor)
     private val imageValidator = ImageValidator()
 
     /**
      * Load a model for inference
      */
     suspend fun loadModel(modelPath: String): Boolean {
-        return onnxModelWrapper.initializeModel(modelPath)
+        return tfliteModelWrapper.initializeModel(modelPath)
     }
 
     /**
@@ -37,10 +35,13 @@ class InferenceEngine(
             val startTime = System.currentTimeMillis()
 
             // Run inference
-            val predictions = onnxModelWrapper.runInference(bitmap) ?: return@withContext null
+            val predictions = tfliteModelWrapper.runInference(bitmap) ?: return@withContext null
 
             // Get top prediction
-            val topPrediction = predictions.firstOrNull() ?: return@withContext null
+            val topPrediction = predictions
+                .sortedByDescending { it.confidence }
+                .firstOrNull { it.confidence >= confidenceThreshold }
+                ?: return@withContext null
 
             val processingTime = System.currentTimeMillis() - startTime
 
@@ -77,21 +78,20 @@ class InferenceEngine(
      * Release resources
      */
     fun release() {
-        onnxModelWrapper.closeSession()
+        tfliteModelWrapper.closeSession()
     }
 
     /**
      * Check if model is loaded
      */
     fun isModelLoaded(): Boolean {
-        return onnxModelWrapper.isModelLoaded()
+        return tfliteModelWrapper.isModelLoaded()
     }
 
     /**
      * Get current model path
      */
     fun getCurrentModelPath(): String? {
-        return onnxModelWrapper.getCurrentModelPath()
+        return tfliteModelWrapper.getCurrentModelPath()
     }
 }
-

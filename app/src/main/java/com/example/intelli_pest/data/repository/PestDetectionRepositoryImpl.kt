@@ -3,6 +3,7 @@ package com.example.intelli_pest.data.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
 import com.example.intelli_pest.data.model.DetectionResultEntity
 import com.example.intelli_pest.data.source.local.AppDatabase
 import com.example.intelli_pest.data.source.local.ModelFileManager
@@ -32,55 +33,68 @@ class PestDetectionRepositoryImpl(
     private val inferenceEngine: InferenceEngine
 ) : PestDetectionRepository {
 
+    companion object {
+        private const val TAG = "PestDetectionRepo"
+    }
+
     override suspend fun detectPest(bitmap: Bitmap, modelId: String): Resource<DetectionResult> {
+        Log.d(TAG, "detectPest() start | model=$modelId | bitmap=${bitmap.width}x${bitmap.height} config=${bitmap.config}")
         return try {
-            // Get model path
-            val modelPath = if (modelFileManager.isModelBundled(modelId)) {
-                modelFileManager.getBundledModelPath(modelId)
-            } else if (modelFileManager.isModelDownloaded(modelId)) {
-                modelFileManager.getModelPath(modelId)
-            } else {
-                return Resource.Error("Model not available. Please download it first.")
+            val modelPath = resolveModelPath(modelId)
+                ?: return Resource.Error("Model '$modelId' not available. Download required.")
+            Log.d(TAG, "Model resolved | path=$modelPath")
+
+            if (!ensureModelLoaded(modelPath)) {
+                Log.e(TAG, "Model load failed | path=$modelPath")
+                return Resource.Error("Failed to load model from $modelPath")
             }
 
-            // Load model if not already loaded
-            if (!inferenceEngine.isModelLoaded() || inferenceEngine.getCurrentModelPath() != modelPath) {
-                val loaded = inferenceEngine.loadModel(modelPath)
-                if (!loaded) {
-                    return Resource.Error("Failed to load model")
-                }
-            }
-
-            // Get confidence threshold
             val threshold = preferencesManager.getConfidenceThreshold().firstOrNull() ?: 0.7f
+            Log.d(TAG, "Confidence threshold=$threshold")
 
-            // Perform detection
             val result = inferenceEngine.detectPest(bitmap, modelId, threshold)
-
-            if (result != null) {
-                // Save image and update result
-                val imageUri = saveImage(bitmap)
-                val updatedResult = result.copy(imageUri = imageUri)
-
-                // Save to history if confidence meets threshold
-                if (updatedResult.meetsThreshold(threshold)) {
-                    saveDetectionResult(updatedResult)
-                }
-
-                Resource.Success(updatedResult)
-            } else {
-                Resource.Error("Failed to perform detection")
+            if (result == null) {
+                Log.e(TAG, "Inference returned null result")
+                return Resource.Error("Detection pipeline returned empty result")
             }
+
+            val imageUri = saveImage(bitmap)
+            val updatedResult = result.copy(imageUri = imageUri)
+            Log.d(TAG, "Detection success | pest=${updatedResult.pestType} | confidence=${updatedResult.confidence} | uri=$imageUri")
+
+            if (updatedResult.meetsThreshold(threshold)) {
+                saveDetectionResult(updatedResult)
+            } else {
+                Log.w(TAG, "Detection below threshold; skipping history save")
+            }
+
+            Resource.Success(updatedResult)
         } catch (e: Exception) {
-            e.printStackTrace()
-            Resource.Error("Detection error: ${e.message}", e)
+            Log.e(TAG, "detectPest() error", e)
+            Resource.Error("Detection error: ${e.localizedMessage ?: "Unknown error"}", e)
         }
+    }
+
+    private suspend fun resolveModelPath(modelId: String): String? {
+        return when {
+            modelFileManager.isModelBundled(modelId) -> modelFileManager.getBundledModelPath(modelId)
+            modelFileManager.isModelDownloaded(modelId) -> modelFileManager.getModelPath(modelId)
+            else -> null
+        }
+    }
+
+    private suspend fun ensureModelLoaded(modelPath: String): Boolean {
+        val alreadyLoaded = inferenceEngine.isModelLoaded() && inferenceEngine.getCurrentModelPath() == modelPath
+        if (alreadyLoaded) return true
+        Log.d(TAG, "Loading model into memory | path=$modelPath")
+        return inferenceEngine.loadModel(modelPath)
     }
 
     override suspend fun validateImage(bitmap: Bitmap): Resource<Boolean> {
         return try {
             val isValid = inferenceEngine.validateImage(bitmap)
             val qualityGood = inferenceEngine.checkImageQuality(bitmap)
+            Log.d(TAG, "validateImage() | valid=$isValid quality=$qualityGood")
 
             if (!qualityGood) {
                 // Still allow detection, just warn about quality
@@ -101,6 +115,7 @@ class PestDetectionRepositoryImpl(
     }
 
     override suspend fun downloadModel(modelId: String): Flow<Resource<Float>> = flow {
+        Log.d(TAG, "downloadModel() start | model=$modelId")
         try {
             emit(Resource.Loading)
 
@@ -110,6 +125,7 @@ class PestDetectionRepositoryImpl(
             val model = models.find { it.id == modelId }
 
             if (model?.downloadUrl == null) {
+                Log.e(TAG, "downloadModel() missing URL | model=$modelId")
                 emit(Resource.Error("Download URL not available"))
                 return@flow
             }
@@ -122,6 +138,7 @@ class PestDetectionRepositoryImpl(
 
             emit(Resource.Success(1f))
         } catch (e: Exception) {
+            Log.e(TAG, "downloadModel() error", e)
             emit(Resource.Error("Download failed: ${e.message}", e))
         }
     }
@@ -130,11 +147,13 @@ class PestDetectionRepositoryImpl(
         return try {
             val deleted = modelFileManager.deleteModel(modelId)
             if (deleted) {
+                Log.d(TAG, "deleteModel() success | model=$modelId")
                 Resource.Success(true)
             } else {
                 Resource.Error("Failed to delete model")
             }
         } catch (e: Exception) {
+            Log.e(TAG, "deleteModel() error", e)
             Resource.Error("Error deleting model: ${e.message}", e)
         }
     }
@@ -148,8 +167,10 @@ class PestDetectionRepositoryImpl(
         return try {
             val entity = DetectionResultEntity.fromDomain(result)
             database.detectionHistoryDao().insertDetection(entity)
+            Log.d(TAG, "saveDetectionResult() success | id=${result.imageUri}")
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "saveDetectionResult() error", e)
             Resource.Error("Failed to save result: ${e.message}", e)
         }
     }
@@ -157,8 +178,10 @@ class PestDetectionRepositoryImpl(
     override suspend fun clearHistory(): Resource<Unit> {
         return try {
             database.detectionHistoryDao().clearAllDetections()
+            Log.d(TAG, "clearHistory() success")
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "clearHistory() error", e)
             Resource.Error("Failed to clear history: ${e.message}", e)
         }
     }
@@ -170,8 +193,10 @@ class PestDetectionRepositoryImpl(
     override suspend fun setConfidenceThreshold(threshold: Float): Resource<Unit> {
         return try {
             preferencesManager.setConfidenceThreshold(threshold)
+            Log.d(TAG, "setConfidenceThreshold() | value=$threshold")
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "setConfidenceThreshold() error", e)
             Resource.Error("Failed to set threshold: ${e.message}", e)
         }
     }
@@ -191,11 +216,12 @@ class PestDetectionRepositoryImpl(
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
             }
 
-            Uri.fromFile(imageFile).toString()
+            val uri = Uri.fromFile(imageFile).toString()
+            Log.d(TAG, "saveImage() success | uri=$uri")
+            uri
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "saveImage() error", e)
             ""
         }
     }
 }
-

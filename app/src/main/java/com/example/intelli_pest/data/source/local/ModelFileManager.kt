@@ -90,20 +90,36 @@ class ModelFileManager(private val context: Context) {
     suspend fun getAllAvailableModels(): List<ModelInfo> = withContext(Dispatchers.IO) {
         val models = mutableListOf<ModelInfo>()
 
-        // 1. Super Ensemble Model (BUNDLED - included in APK)
+        // 1. ResNet50 Model (BUNDLED - included in APK)
+        models.add(
+            ModelInfo(
+                id = "resnet50",
+                name = "resnet50",
+                displayName = "ResNet50",
+                description = "Deep residual network - INCLUDED for offline use",
+                accuracy = 0.92f,
+                inferenceSpeedMs = 180,
+                sizeInMb = 98f,
+                isDownloaded = isModelDownloaded("resnet50"),
+                isBundled = isModelBundled("resnet50"),
+                version = "1.0.0",
+                downloadUrl = null // Bundled, no download needed
+            )
+        )
+
+        // Super Ensemble Model (Downloadable - for high-end devices)
         models.add(
             ModelInfo(
                 id = "super_ensemble",
                 name = "super_ensemble",
                 displayName = "Super Ensemble",
-                description = "High accuracy ensemble model - INCLUDED",
+                description = "Highest accuracy ensemble model (requires 600MB+ RAM)",
                 accuracy = 0.96f,
                 inferenceSpeedMs = 450,
                 sizeInMb = 544f,
                 isDownloaded = isModelDownloaded("super_ensemble"),
-                isBundled = isModelBundled("super_ensemble"),
-                version = "1.0.0",
-                downloadUrl = null // Bundled, no download needed
+                isBundled = false,
+                downloadUrl = "$GITHUB_MODELS_URL/super_ensemble.onnx"
             )
         )
 

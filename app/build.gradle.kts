@@ -102,8 +102,10 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
 
-    // ONNX Runtime
-    implementation(libs.onnxruntime.android)
+    // TensorFlow Lite
+    implementation(libs.tensorflow.lite)
+    implementation(libs.tensorflow.lite.gpu)
+    implementation(libs.tensorflow.lite.support)
 
     // Image Loading
     implementation(libs.coil.compose)

@@ -4,10 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.Matrix
 import android.media.ExifInterface
-import android.os.Build
+import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -29,13 +28,20 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.example.intelli_pest.presentation.common.LoadingAnimation
 import com.example.intelli_pest.ui.theme.PrimaryGreen
+import com.example.intelli_pest.util.BitmapUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 /**
  * Camera screen for capturing images
@@ -47,6 +53,8 @@ fun CameraScreen(
     onError: (String) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     LaunchedEffect(Unit) {
@@ -55,9 +63,16 @@ fun CameraScreen(
         }
     }
 
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            ProcessCameraProvider.getInstance(context).get().unbindAll()
+        }
+    }
+
     when {
         cameraPermissionState.status.isGranted -> {
             CameraPreview(
+                lifecycleOwner = lifecycleOwner,
                 onImageCaptured = onImageCaptured,
                 onError = onError,
                 onBack = onBack
@@ -74,18 +89,26 @@ fun CameraScreen(
 
 @Composable
 private fun CameraPreview(
+    lifecycleOwner: LifecycleOwner,
     onImageCaptured: (Bitmap) -> Unit,
     onError: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
 
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var isCapturing by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
 
-    val executor = remember { ContextCompat.getMainExecutor(context) }
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                cameraExecutor.shutdown()
+            } catch (_: Exception) { }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -96,7 +119,7 @@ private fun CameraPreview(
                 cameraProviderFuture.addListener({
                     try {
                         val cameraProvider = cameraProviderFuture.get()
-
+                        cameraProvider.unbindAll()
                         val preview = Preview.Builder().build().also {
                             it.setSurfaceProvider(previewView.surfaceProvider)
                         }
@@ -113,7 +136,6 @@ private fun CameraPreview(
 
                         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                        cameraProvider.unbindAll()
                         cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
@@ -123,7 +145,7 @@ private fun CameraPreview(
                     } catch (e: Exception) {
                         onError("Failed to start camera: ${e.message}")
                     }
-                }, executor)
+                }, mainExecutor)
 
                 previewView
             },
@@ -146,7 +168,8 @@ private fun CameraPreview(
                     captureImage(
                         context = context,
                         imageCapture = imageCapture,
-                        executor = executor,
+                        executor = cameraExecutor,
+                        mainExecutor = mainExecutor,
                         onImageCaptured = { bitmap ->
                             isCapturing = false
                             onImageCaptured(bitmap)
@@ -363,6 +386,7 @@ private fun captureImage(
     context: Context,
     imageCapture: ImageCapture?,
     executor: Executor,
+    mainExecutor: Executor,
     onImageCaptured: (Bitmap) -> Unit,
     onError: (String) -> Unit
 ) {
@@ -372,7 +396,6 @@ private fun captureImage(
     }
 
     try {
-        // Create a temporary file in cache directory
         val photoFile = File(
             context.cacheDir,
             "capture_${System.currentTimeMillis()}.jpg"
@@ -385,43 +408,60 @@ private fun captureImage(
             executor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    try {
-                        // Load bitmap with options
-                        val options = BitmapFactory.Options().apply {
-                            inPreferredConfig = Bitmap.Config.ARGB_8888
-                        }
-                        val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath, options)
-
-                        if (bitmap == null) {
-                            photoFile.delete()
-                            onError("Failed to decode captured image")
-                            return
-                        }
-
-                        // Get rotation from EXIF data and apply it
-                        val rotatedBitmap = correctBitmapRotation(photoFile.absolutePath, bitmap)
-
-                        // Clean up temp file
-                        photoFile.delete()
-
-                        // Ensure it's a software bitmap
-                        val finalBitmap = ensureSoftwareBitmap(rotatedBitmap)
-
-                        onImageCaptured(finalBitmap)
-                    } catch (e: Exception) {
-                        photoFile.delete()
-                        onError("Failed to process image: ${e.message}")
-                    }
+                    processCapturedImage(
+                        context = context,
+                        photoFile = photoFile,
+                        mainExecutor = mainExecutor,
+                        onImageCaptured = onImageCaptured,
+                        onError = onError
+                    )
                 }
 
                 override fun onError(exception: ImageCaptureException) {
+                    Log.e("CameraScreen", "Image capture error", exception)
                     photoFile.delete()
                     onError("Capture failed: ${exception.message}")
                 }
             }
         )
     } catch (e: Exception) {
+        Log.e("CameraScreen", "Failed to capture", e)
         onError("Failed to capture: ${e.message}")
+    }
+}
+
+private fun processCapturedImage(
+    context: Context,
+    photoFile: File,
+    mainExecutor: Executor,
+    onImageCaptured: (Bitmap) -> Unit,
+    onError: (String) -> Unit
+) {
+    val applicationScope = CoroutineScope(Dispatchers.IO)
+    applicationScope.launch {
+        try {
+            val options = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+                inMutable = false
+            }
+            var bitmap = BitmapFactory.decodeFile(photoFile.absolutePath, options)
+                ?: run {
+                    photoFile.delete()
+                    throw IllegalStateException("Failed to decode captured image")
+                }
+            bitmap = correctBitmapRotation(photoFile.absolutePath, bitmap)
+            val softwareBitmap = BitmapUtils.toSoftwareBitmap(bitmap)
+            photoFile.delete()
+
+            withContext(Dispatchers.Main) {
+                onImageCaptured(softwareBitmap)
+            }
+        } catch (e: Exception) {
+            photoFile.delete()
+            withContext(Dispatchers.Main) {
+                onError("Failed to process image: ${e.message}")
+            }
+        }
     }
 }
 
@@ -446,50 +486,16 @@ private fun correctBitmapRotation(filePath: String, bitmap: Bitmap): Bitmap {
         if (rotationDegrees != 0f) {
             val matrix = Matrix()
             matrix.postRotate(rotationDegrees)
-            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotated != bitmap) {
+                bitmap.recycle()
+            }
+            rotated
         } else {
             bitmap
         }
     } catch (e: Exception) {
-        bitmap // Return original on error
+        Log.e("CameraScreen", "Error correcting rotation", e)
+        bitmap
     }
 }
-
-/**
- * Ensure bitmap is a software ARGB_8888 bitmap
- * Uses Canvas drawing as the most reliable conversion method
- */
-private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
-    return try {
-        // Check if conversion is needed
-        val needsConversion = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                bitmap.config == Bitmap.Config.HARDWARE -> true
-            bitmap.config == null -> true
-            bitmap.config != Bitmap.Config.ARGB_8888 -> true
-            else -> false
-        }
-
-        if (needsConversion) {
-            // Create a new ARGB_8888 bitmap and draw the original onto it
-            val softwareBitmap = Bitmap.createBitmap(
-                bitmap.width,
-                bitmap.height,
-                Bitmap.Config.ARGB_8888
-            )
-            val canvas = Canvas(softwareBitmap)
-            canvas.drawBitmap(bitmap, 0f, 0f, null)
-            softwareBitmap
-        } else {
-            bitmap
-        }
-    } catch (e: Exception) {
-        // Fallback: try bitmap.copy()
-        try {
-            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
-        } catch (e2: Exception) {
-            bitmap
-        }
-    }
-}
-

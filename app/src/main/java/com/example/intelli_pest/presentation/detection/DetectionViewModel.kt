@@ -33,7 +33,7 @@ class DetectionViewModel(
         viewModelScope.launch {
             val models = getAvailableModelsUseCase().firstOrNull() ?: emptyList()
             val selectedModel = models.firstOrNull { it.isAvailable() }
-            _uiState.update { it.copy(selectedModelId = selectedModel?.id ?: "super_ensemble") }
+            _uiState.update { it.copy(selectedModelId = selectedModel?.id ?: "resnet50") }
         }
     }
 
@@ -85,7 +85,7 @@ data class DetectionUiState(
     val detectionResult: DetectionResult? = null,
     val capturedBitmap: Bitmap? = null,
     val error: String? = null,
-    val selectedModelId: String = "super_ensemble"
+    val selectedModelId: String = "resnet50"
 )
 
 

@@ -17,8 +17,11 @@ import org.junit.Assert.*
 class ExampleInstrumentedTest {
     @Test
     fun useAppContext() {
-        // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.example.intelli_pest", appContext.packageName)
+        assertTrue(
+            "Unexpected package name: ${appContext.packageName}",
+            appContext.packageName.startsWith("com.server246.intelli_pest") ||
+                appContext.packageName.startsWith("com.example.intelli_pest")
+        )
     }
 }

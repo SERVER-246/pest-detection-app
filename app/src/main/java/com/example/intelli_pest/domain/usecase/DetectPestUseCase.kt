@@ -1,9 +1,11 @@
 package com.example.intelli_pest.domain.usecase
 
 import android.graphics.Bitmap
+import android.util.Log
 import com.example.intelli_pest.domain.model.DetectionResult
 import com.example.intelli_pest.domain.model.Resource
 import com.example.intelli_pest.domain.repository.PestDetectionRepository
+import com.example.intelli_pest.util.BitmapUtils
 
 /**
  * Use case for detecting pests in images
@@ -11,38 +13,31 @@ import com.example.intelli_pest.domain.repository.PestDetectionRepository
 class DetectPestUseCase(
     private val repository: PestDetectionRepository
 ) {
+    private val TAG = "DetectPestUseCase"
+
     suspend operator fun invoke(
         bitmap: Bitmap,
         modelId: String = "super_ensemble"
     ): Resource<DetectionResult> {
-        // Try validation but don't block on failure
-        val validationResult = try {
-            repository.validateImage(bitmap)
-        } catch (e: Exception) {
-            // If validation crashes, proceed anyway
-            Resource.Success(true)
-        }
+        Log.d(TAG, "invoke() called | model=$modelId | bitmap=${bitmap.width}x${bitmap.height}, config=${bitmap.config}")
 
-        return when (validationResult) {
-            is Resource.Success -> {
-                // Proceed with detection regardless of validation result
-                // The model will handle invalid images appropriately
-                try {
-                    repository.detectPest(bitmap, modelId)
-                } catch (e: Exception) {
-                    Resource.Error("Detection failed: ${e.message}")
+        return runCatching {
+            val softwareBitmap = BitmapUtils.toSoftwareBitmap(bitmap)
+            Log.d(TAG, "Bitmap converted to software config=${softwareBitmap.config}")
+
+            repository.detectPest(softwareBitmap, modelId).also { result ->
+                when (result) {
+                    is Resource.Success -> Log.d(TAG, "Detection success | pest=${result.data.pestType} | confidence=${result.data.confidence}")
+                    is Resource.Error -> Log.e(TAG, "Detection failed in repository | message=${result.message}", result.exception)
+                    is Resource.Loading -> Log.d(TAG, "Detection still loading")
                 }
             }
-            is Resource.Error -> {
-                // Validation had an error, but try detection anyway
-                try {
-                    repository.detectPest(bitmap, modelId)
-                } catch (e: Exception) {
-                    Resource.Error("Detection failed: ${e.message}")
-                }
-            }
-            is Resource.Loading -> Resource.Loading
+        }.getOrElse { throwable ->
+            Log.e(TAG, "invoke() threw", throwable)
+            Resource.Error(
+                message = "Detection failed: ${throwable.localizedMessage ?: "Unknown error"}",
+                exception = throwable as? Exception ?: Exception(throwable)
+            )
         }
     }
 }
-
