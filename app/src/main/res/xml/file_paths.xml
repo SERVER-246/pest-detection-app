@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- External cache directory for shareable logs -->
+    <external-cache-path
+        name="shared_logs"
+        path="shared_logs/" />
+
+    <!-- Internal cache as fallback -->
+    <cache-path
+        name="cache_logs"
+        path="shared_logs/" />
+
+    <!-- Internal files directory -->
+    <files-path
+        name="logs"
+        path="logs/" />
+</paths>
+

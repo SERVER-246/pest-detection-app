@@ -13,6 +13,7 @@ import com.example.intelli_pest.domain.usecase.GetDetectionHistoryUseCase
 import com.example.intelli_pest.ml.InferenceEngine
 import com.example.intelli_pest.presentation.detection.DetectionViewModel
 import com.example.intelli_pest.presentation.main.MainViewModel
+import com.example.intelli_pest.presentation.settings.SettingsViewModel
 
 /**
  * Simple dependency injection container
@@ -23,17 +24,20 @@ object AppContainer {
     private var getAvailableModelsUseCase: GetAvailableModelsUseCase? = null
     private var getDetectionHistoryUseCase: GetDetectionHistoryUseCase? = null
     private var downloadModelUseCase: DownloadModelUseCase? = null
+    private var preferencesManager: PreferencesManager? = null
+    private var appContext: Context? = null
 
     fun initialize(context: Context) {
+        appContext = context.applicationContext
         val database = AppDatabase.getDatabase(context)
-        val preferencesManager = PreferencesManager(context)
+        preferencesManager = PreferencesManager(context)
         val modelFileManager = ModelFileManager(context)
-        val inferenceEngine = InferenceEngine(context)
+        val inferenceEngine = InferenceEngine(context, preferencesManager!!)
 
         repository = PestDetectionRepositoryImpl(
             context = context,
             database = database,
-            preferencesManager = preferencesManager,
+            preferencesManager = preferencesManager!!,
             modelFileManager = modelFileManager,
             inferenceEngine = inferenceEngine
         )
@@ -47,14 +51,22 @@ object AppContainer {
     fun provideDetectionViewModel(): DetectionViewModel {
         return DetectionViewModel(
             detectPestUseCase = detectPestUseCase!!,
-            getAvailableModelsUseCase = getAvailableModelsUseCase!!
+            preferencesManager = preferencesManager!!
         )
     }
 
     fun provideMainViewModel(): MainViewModel {
         return MainViewModel(
             getAvailableModelsUseCase = getAvailableModelsUseCase!!,
-            getDetectionHistoryUseCase = getDetectionHistoryUseCase!!
+            getDetectionHistoryUseCase = getDetectionHistoryUseCase!!,
+            preferencesManager = preferencesManager!!
+        )
+    }
+
+    fun provideSettingsViewModel(): SettingsViewModel {
+        return SettingsViewModel(
+            preferencesManager = preferencesManager!!,
+            context = appContext!!
         )
     }
 }

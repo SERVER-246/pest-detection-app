@@ -71,6 +71,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    androidResources {
+        noCompress += "tflite"
+        noCompress += "onnx"
+        noCompress += "pt"  // PyTorch models
+    }
 }
 
 dependencies {
@@ -102,10 +108,15 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
 
-    // TensorFlow Lite
-    implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.gpu)
-    implementation(libs.tensorflow.lite.support)
+    // ExifInterface
+    implementation(libs.androidx.exifinterface)
+
+    // ONNX Runtime (for student_model.onnx inference)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.16.3")
+
+    // PyTorch Mobile (for student_model.pt inference)
+    implementation("org.pytorch:pytorch_android_lite:2.1.0")
+    implementation("org.pytorch:pytorch_android_torchvision_lite:2.1.0")
 
     // Image Loading
     implementation(libs.coil.compose)

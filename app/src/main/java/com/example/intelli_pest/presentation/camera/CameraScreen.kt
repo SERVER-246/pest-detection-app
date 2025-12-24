@@ -5,7 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
 import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -16,21 +16,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.example.intelli_pest.presentation.common.LoadingAnimation
 import com.example.intelli_pest.ui.theme.PrimaryGreen
+import com.example.intelli_pest.util.AppLogger
 import com.example.intelli_pest.util.BitmapUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -253,7 +255,7 @@ private fun CameraTopBar(
             modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
         ) {
             Icon(
-                Icons.Default.ArrowBack,
+                Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
                 tint = Color.White
             )
@@ -390,7 +392,10 @@ private fun captureImage(
     onImageCaptured: (Bitmap) -> Unit,
     onError: (String) -> Unit
 ) {
+    AppLogger.logAction("CameraScreen", "Capture_Initiated", "Starting image capture process")
+
     if (imageCapture == null) {
+        AppLogger.logError("CameraScreen", "Capture_Failed", "ImageCapture is null - camera not ready")
         onError("Camera not ready. Please try again.")
         return
     }
@@ -400,14 +405,17 @@ private fun captureImage(
             context.cacheDir,
             "capture_${System.currentTimeMillis()}.jpg"
         )
+        AppLogger.logDebug("CameraScreen", "Capture_File_Created", "Temp file: ${photoFile.absolutePath}")
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
+        AppLogger.logInfo("CameraScreen", "Taking_Picture", "Calling takePicture on ImageCapture")
         imageCapture.takePicture(
             outputOptions,
             executor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    AppLogger.logResponse("CameraScreen", "Image_Saved", "Photo saved to: ${photoFile.absolutePath}, Size: ${photoFile.length()} bytes")
                     processCapturedImage(
                         context = context,
                         photoFile = photoFile,
@@ -418,6 +426,7 @@ private fun captureImage(
                 }
 
                 override fun onError(exception: ImageCaptureException) {
+                    AppLogger.logError("CameraScreen", "Image_Capture_Error", exception, "ImageCapture.onError called")
                     Log.e("CameraScreen", "Image capture error", exception)
                     photoFile.delete()
                     onError("Capture failed: ${exception.message}")
@@ -425,11 +434,13 @@ private fun captureImage(
             }
         )
     } catch (e: Exception) {
+        AppLogger.logError("CameraScreen", "Capture_Exception", e, "Exception during capture setup")
         Log.e("CameraScreen", "Failed to capture", e)
         onError("Failed to capture: ${e.message}")
     }
 }
 
+@Suppress("UNUSED_PARAMETER")
 private fun processCapturedImage(
     context: Context,
     photoFile: File,
@@ -437,26 +448,40 @@ private fun processCapturedImage(
     onImageCaptured: (Bitmap) -> Unit,
     onError: (String) -> Unit
 ) {
+    AppLogger.logInfo("CameraScreen", "Processing_Image", "Starting image processing for: ${photoFile.name}")
     val applicationScope = CoroutineScope(Dispatchers.IO)
     applicationScope.launch {
         try {
+            AppLogger.logDebug("CameraScreen", "Decoding_Bitmap", "Decoding file: ${photoFile.absolutePath}")
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
                 inMutable = false
             }
             var bitmap = BitmapFactory.decodeFile(photoFile.absolutePath, options)
                 ?: run {
+                    AppLogger.logError("CameraScreen", "Decode_Failed", "BitmapFactory.decodeFile returned null")
                     photoFile.delete()
                     throw IllegalStateException("Failed to decode captured image")
                 }
+
+            AppLogger.logDebug("CameraScreen", "Bitmap_Decoded", "Size: ${bitmap.width}x${bitmap.height}, Config: ${bitmap.config}")
+
+            AppLogger.logDebug("CameraScreen", "Correcting_Rotation", "Applying EXIF rotation correction")
             bitmap = correctBitmapRotation(photoFile.absolutePath, bitmap)
+
+            AppLogger.logDebug("CameraScreen", "Converting_Software_Bitmap", "Converting to software bitmap")
             val softwareBitmap = BitmapUtils.toSoftwareBitmap(bitmap)
+            AppLogger.logResponse("CameraScreen", "Bitmap_Ready", "Final bitmap: ${softwareBitmap.width}x${softwareBitmap.height}, Config: ${softwareBitmap.config}")
+
             photoFile.delete()
+            AppLogger.logDebug("CameraScreen", "Temp_File_Deleted", "Cleaned up temp file")
 
             withContext(Dispatchers.Main) {
+                AppLogger.logResponse("CameraScreen", "Image_Processing_Complete", "Passing bitmap to callback")
                 onImageCaptured(softwareBitmap)
             }
         } catch (e: Exception) {
+            AppLogger.logError("CameraScreen", "Processing_Error", e, "Exception during image processing")
             photoFile.delete()
             withContext(Dispatchers.Main) {
                 onError("Failed to process image: ${e.message}")

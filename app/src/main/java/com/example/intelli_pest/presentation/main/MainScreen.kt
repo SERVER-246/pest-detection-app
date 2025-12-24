@@ -1,5 +1,6 @@
 package com.example.intelli_pest.presentation.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +23,9 @@ import com.example.intelli_pest.presentation.common.AnimatedButton
 import com.example.intelli_pest.presentation.common.AnimatedOutlinedButton
 import com.example.intelli_pest.ui.theme.*
 
+// Runtime color (ONNX)
+private val ONNXColor = Color(0xFF2196F3)
+
 /**
  * Main screen of the app with attractive UI
  */
@@ -29,11 +33,14 @@ import com.example.intelli_pest.ui.theme.*
 @Composable
 fun MainScreen(
     uiState: MainUiState,
+    currentRuntime: String = "tflite",
+    selectedModelId: String? = null,
     onCaptureClick: () -> Unit,
     onGalleryClick: () -> Unit,
     onModelsClick: () -> Unit,
     onHistoryClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onShareLogsClick: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -54,6 +61,14 @@ fun MainScreen(
                     }
                 },
                 actions = {
+                    // Share Logs button
+                    IconButton(onClick = onShareLogsClick) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share Logs",
+                            tint = Color.White
+                        )
+                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             Icons.Default.Settings,
@@ -97,6 +112,15 @@ fun MainScreen(
                 // Welcome card
                 WelcomeCard()
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Active Runtime & Model Card (NEW)
+                ActiveModelCard(
+                    runtime = currentRuntime,
+                    modelId = selectedModelId ?: "mobilenet_v2",
+                    onChangeClick = onModelsClick
+                )
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Main action buttons
@@ -106,12 +130,6 @@ fun MainScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Current model info
-                uiState.selectedModel?.let { model ->
-                    CurrentModelCard(model = model, onChangeClick = onModelsClick)
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
 
                 // Quick actions
                 QuickActionsSection(
@@ -139,6 +157,113 @@ fun MainScreen(
         }
     }
 }
+
+/**
+ * Card showing currently active runtime (simplified - only student_model)
+ */
+@Composable
+private fun ActiveModelCard(
+    runtime: String,
+    @Suppress("UNUSED_PARAMETER") modelId: String, // Kept for API compatibility
+    onChangeClick: () -> Unit
+) {
+    // runtime == "onnx" for ONNX, runtime == "tflite" for PyTorch (repurposed enum)
+    val isOnnx = runtime == "onnx"
+    val color = if (isOnnx) ONNXColor else Color(0xFFEE4C2C) // PyTorch orange
+    val runtimeName = if (isOnnx) "ONNX Runtime" else "PyTorch Mobile"
+    val modelFile = if (isOnnx) "student_model.onnx" else "student_model.pt"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.08f)
+        ),
+        border = BorderStroke(2.dp, color)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Hub,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Inference Engine",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = runtimeName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = color
+                        )
+                    }
+                }
+
+                FilledTonalButton(
+                    onClick = onChangeClick,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = color.copy(alpha = 0.2f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.SwapHoriz,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Change")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = color.copy(alpha = 0.3f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Psychology,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Model",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = modelFile,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun WelcomeCard() {
@@ -213,78 +338,6 @@ private fun MainActionButtons(
     }
 }
 
-@Composable
-private fun CurrentModelCard(
-    model: com.example.intelli_pest.domain.model.ModelInfo,
-    onChangeClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Current Model",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                TextButton(onClick = onChangeClick) {
-                    Text("Change")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Memory,
-                    contentDescription = null,
-                    tint = PrimaryGreen
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    model.displayName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                InfoChip(
-                    icon = Icons.Default.CheckCircle,
-                    text = model.getAccuracyPercentage(),
-                    color = SuccessGreen
-                )
-                InfoChip(
-                    icon = Icons.Default.Speed,
-                    text = "${model.inferenceSpeedMs}ms",
-                    color = InfoBlue
-                )
-                InfoChip(
-                    icon = Icons.Default.Storage,
-                    text = model.getSizeFormatted(),
-                    color = SecondaryYellow
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun InfoChip(

@@ -2,12 +2,17 @@ package com.example.intelli_pest.ml
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Log
 
 /**
  * Validates if an image is suitable for pest detection
  * Filters out unrelated images (non-sugarcane crops)
  */
 class ImageValidator {
+
+    companion object {
+        private const val TAG = "ImageValidator"
+    }
 
     /**
      * Safely get pixel from bitmap, returns default color on failure
@@ -19,7 +24,8 @@ class ImageValidator {
             } else {
                 Color.GRAY
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get pixel at ($x, $y)", e)
             Color.GRAY
         }
     }
@@ -32,8 +38,12 @@ class ImageValidator {
         // This function now assumes it receives a software bitmap.
         // The conversion is handled at the source (Camera/Gallery).
         return try {
+            Log.d(TAG, "======= IMAGE VALIDATION START =======")
+            Log.d(TAG, "Bitmap size: ${bitmap.width}x${bitmap.height}, config: ${bitmap.config}")
+
             // If we still can't access pixels, just accept the image
             if (!canAccessPixels(bitmap)) {
+                Log.w(TAG, "⚠️ Cannot access pixels, accepting image by default")
                 return true
             }
 
@@ -43,7 +53,13 @@ class ImageValidator {
             val hasTextureVariation = checkTextureVariationSafe(bitmap)
             val qualityCheck = checkBasicQualitySafe(bitmap)
 
-            // Image is valid if it passes at least 1 check (very lenient)
+            Log.d(TAG, "Validation checks:")
+            Log.d(TAG, "  - Green content: $hasGreenContent")
+            Log.d(TAG, "  - Color distribution: $hasProperColorDistribution")
+            Log.d(TAG, "  - Texture variation: $hasTextureVariation")
+            Log.d(TAG, "  - Quality: $qualityCheck")
+
+            // Image is valid if it passes at least 2 checks (improved from 1)
             val checksPassedCount = listOf(
                 hasGreenContent,
                 hasProperColorDistribution,
@@ -51,8 +67,19 @@ class ImageValidator {
                 qualityCheck
             ).count { it }
 
-            checksPassedCount >= 1
-        } catch (_: Exception) {
+            val isValid = checksPassedCount >= 2
+
+            Log.d(TAG, "Checks passed: $checksPassedCount/4")
+            if (isValid) {
+                Log.d(TAG, "✅ Image validation PASSED")
+            } else {
+                Log.w(TAG, "❌ Image validation FAILED - Image may not be a sugarcane crop")
+            }
+            Log.d(TAG, "======= IMAGE VALIDATION END =======")
+
+            isValid
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Image validation error, accepting by default", e)
             // On ANY error, accept the image and let the model decide
             true
         }
@@ -65,11 +92,14 @@ class ImageValidator {
         return try {
             if (bitmap.width > 0 && bitmap.height > 0) {
                 bitmap.getPixel(0, 0)
+                Log.d(TAG, "✅ Pixel access successful")
                 true
             } else {
+                Log.w(TAG, "❌ Invalid bitmap dimensions")
                 false
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Cannot access pixels", e)
             false
         }
     }
@@ -99,8 +129,10 @@ class ImageValidator {
 
             if (totalSamples == 0) return true
             val greenPercentage = greenPixelCount.toFloat() / totalSamples
-            greenPercentage >= 0.05f // Very lenient: 5%
-        } catch (_: Exception) {
+            Log.d(TAG, "Green content: ${String.format("%.2f%%", greenPercentage * 100)}")
+            greenPercentage >= 0.10f // 10% green content required
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking green content", e)
             true
         }
     }

@@ -1,7 +1,10 @@
 package com.example.intelli_pest.domain.model
 
+import java.util.Locale
+
 /**
  * Represents information about an AI model
+ * Supports both TFLite and ONNX runtime formats
  */
 data class ModelInfo(
     val id: String,
@@ -15,27 +18,56 @@ data class ModelInfo(
     val isBundled: Boolean = false,
     val downloadUrl: String? = null,
     val version: String = "1.0.0",
-    val lastUpdated: Long = System.currentTimeMillis()
+    val lastUpdated: Long = System.currentTimeMillis(),
+    // Runtime-specific availability
+    val hasTFLite: Boolean = true,
+    val hasONNX: Boolean = false,
+    val tfliteBundled: Boolean = false,
+    val onnxBundled: Boolean = false
 ) {
     /**
      * Get accuracy as percentage string
      */
     fun getAccuracyPercentage(): String {
-        return String.format("%.1f%%", accuracy * 100)
+        return String.format(Locale.US, "%.1f%%", accuracy * 100)
     }
 
     /**
      * Get size formatted string
      */
     fun getSizeFormatted(): String {
-        return String.format("%.1f MB", sizeInMb)
+        return String.format(Locale.US, "%.1f MB", sizeInMb)
     }
 
     /**
-     * Check if model is available for use
+     * Check if model is available for use (any runtime)
      */
     fun isAvailable(): Boolean {
         return isDownloaded || isBundled
+    }
+
+    /**
+     * Check if model is available for TFLite runtime
+     */
+    fun isAvailableForTFLite(): Boolean {
+        return hasTFLite && (tfliteBundled || isDownloaded)
+    }
+
+    /**
+     * Check if model is available for ONNX runtime
+     */
+    fun isAvailableForONNX(): Boolean {
+        return hasONNX && (onnxBundled || isDownloaded)
+    }
+
+    /**
+     * Get runtime availability description
+     */
+    fun getRuntimeAvailability(): String {
+        val runtimes = mutableListOf<String>()
+        if (hasTFLite) runtimes.add(if (tfliteBundled) "TFLite ✓" else "TFLite")
+        if (hasONNX) runtimes.add(if (onnxBundled) "ONNX ✓" else "ONNX")
+        return runtimes.joinToString(" | ")
     }
 
     companion object {

@@ -13,6 +13,7 @@ import com.example.intelli_pest.domain.model.ModelInfo
 import com.example.intelli_pest.domain.model.Resource
 import com.example.intelli_pest.domain.repository.PestDetectionRepository
 import com.example.intelli_pest.ml.InferenceEngine
+import com.example.intelli_pest.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 
 /**
  * Implementation of PestDetectionRepository
@@ -35,31 +37,58 @@ class PestDetectionRepositoryImpl(
 
     companion object {
         private const val TAG = "PestDetectionRepo"
+        private const val MIN_CONFIDENCE_FOR_VALID_IMAGE = 0.3f  // Minimum confidence to consider image valid
+        private const val MAX_ENTROPY_FOR_VALID_IMAGE = 2.0f    // Maximum entropy (randomness) in predictions
     }
 
     override suspend fun detectPest(bitmap: Bitmap, modelId: String): Resource<DetectionResult> {
+        AppLogger.logAction("Repository", "DetectPest_Called", "Model: $modelId, Bitmap: ${bitmap.width}x${bitmap.height}, Config: ${bitmap.config}")
         Log.d(TAG, "detectPest() start | model=$modelId | bitmap=${bitmap.width}x${bitmap.height} config=${bitmap.config}")
         return try {
+            // Step 1: Validate image first
+            AppLogger.logInfo("Repository", "Validating_Image", "Checking if image is suitable for pest detection")
+            val validationResult = validateImage(bitmap)
+            if (validationResult is Resource.Success && validationResult.data == false) {
+                AppLogger.logWarning("Repository", "Image_Validation_Failed", "Image does not appear to be a sugarcane crop")
+                // Don't block, just log - we'll check model confidence later
+            }
+
             val modelPath = resolveModelPath(modelId)
-                ?: return Resource.Error("Model '$modelId' not available. Download required.")
+            if (modelPath == null) {
+                AppLogger.logError("Repository", "Model_Not_Available", "Model '$modelId' not available - download required")
+                return Resource.Error("Model '$modelId' not available. Download required.")
+            }
+            AppLogger.logInfo("Repository", "Model_Path_Resolved", "Path: $modelPath")
             Log.d(TAG, "Model resolved | path=$modelPath")
 
             if (!ensureModelLoaded(modelPath)) {
+                AppLogger.logError("Repository", "Model_Load_Failed", "Failed to load model from: $modelPath")
                 Log.e(TAG, "Model load failed | path=$modelPath")
                 return Resource.Error("Failed to load model from $modelPath")
             }
+            AppLogger.logResponse("Repository", "Model_Loaded", "Model successfully loaded: $modelPath")
 
             val threshold = preferencesManager.getConfidenceThreshold().firstOrNull() ?: 0.7f
             Log.d(TAG, "Confidence threshold=$threshold")
 
+            // Step 2: Run inference
             val result = inferenceEngine.detectPest(bitmap, modelId, threshold)
             if (result == null) {
+                AppLogger.logError("Repository", "Inference_Null", "Inference returned null result")
                 Log.e(TAG, "Inference returned null result")
                 return Resource.Error("Detection pipeline returned empty result")
             }
 
+            // Step 3: Check if image is unrelated based on model predictions
+            val unrelatedCheck = isUnrelatedImage(result)
+            if (unrelatedCheck.first) {
+                AppLogger.logWarning("Repository", "Unrelated_Image_Detected", unrelatedCheck.second)
+                return Resource.Error("This image doesn't appear to be a sugarcane crop. ${unrelatedCheck.second}")
+            }
+
             val imageUri = saveImage(bitmap)
             val updatedResult = result.copy(imageUri = imageUri)
+            AppLogger.logResponse("Repository", "Detection_Success", "Pest: ${updatedResult.pestType.displayName}, Confidence: ${updatedResult.getConfidencePercentage()}")
             Log.d(TAG, "Detection success | pest=${updatedResult.pestType} | confidence=${updatedResult.confidence} | uri=$imageUri")
 
             if (updatedResult.meetsThreshold(threshold)) {
@@ -70,16 +99,91 @@ class PestDetectionRepositoryImpl(
 
             Resource.Success(updatedResult)
         } catch (e: Exception) {
+            AppLogger.logError("Repository", "DetectPest_Error", e, "Exception during detection")
             Log.e(TAG, "detectPest() error", e)
             Resource.Error("Detection error: ${e.localizedMessage ?: "Unknown error"}", e)
         }
     }
 
+    /**
+     * Check if the image is unrelated to sugarcane crops based on model predictions
+     * Returns Pair(isUnrelated, reason)
+     */
+    private fun isUnrelatedImage(result: DetectionResult): Pair<Boolean, String> {
+        val allPredictions = result.allPredictions
+
+        // If no predictions, likely an issue
+        if (allPredictions.isEmpty()) {
+            return Pair(true, "No predictions available")
+        }
+
+        // Get top prediction confidence
+        val topConfidence = result.confidence
+
+        // Check 1: If top confidence is very low, image might be unrelated
+        if (topConfidence < MIN_CONFIDENCE_FOR_VALID_IMAGE) {
+            AppLogger.logDebug("Repository", "Low_Confidence_Check", "Top confidence $topConfidence < $MIN_CONFIDENCE_FOR_VALID_IMAGE")
+            return Pair(true, "Model confidence too low (${String.format(Locale.US, "%.1f%%", topConfidence * 100)}). Please capture a clearer image of sugarcane.")
+        }
+
+        // Check 2: Calculate entropy of predictions - high entropy means uncertain/random predictions
+        val entropy = calculateEntropy(allPredictions.map { it.confidence })
+        AppLogger.logDebug("Repository", "Entropy_Check", "Prediction entropy: $entropy")
+
+        if (entropy > MAX_ENTROPY_FOR_VALID_IMAGE && topConfidence < 0.5f) {
+            return Pair(true, "Image content is unclear. Please capture a focused image of sugarcane crop.")
+        }
+
+        // Check 3: If all predictions have very similar (uniform) confidence, image is likely unrelated
+        val confidences = allPredictions.map { it.confidence }
+        val maxConf = confidences.maxOrNull() ?: 0f
+        val minConf = confidences.minOrNull() ?: 0f
+        val range = maxConf - minConf
+
+        // Only check uniform distribution if confidence is still relatively low
+        if (range < 0.1f && maxConf < 0.4f) {
+            AppLogger.logDebug("Repository", "Uniform_Distribution_Check", "Uniform distribution detected, range: $range")
+            return Pair(true, "Cannot identify sugarcane crop in this image. Please try a different image.")
+        }
+
+        return Pair(false, "")
+    }
+
+    /**
+     * Calculate Shannon entropy of confidence distribution
+     */
+    private fun calculateEntropy(confidences: List<Float>): Float {
+        val sum = confidences.sum()
+        if (sum == 0f) return 0f
+
+        return confidences
+            .map { it / sum }
+            .filter { it > 0 }
+            .map { -it * kotlin.math.ln(it) }
+            .sum()
+    }
+
     private suspend fun resolveModelPath(modelId: String): String? {
-        return when {
-            modelFileManager.isModelBundled(modelId) -> modelFileManager.getBundledModelPath(modelId)
-            modelFileManager.isModelDownloaded(modelId) -> modelFileManager.getModelPath(modelId)
-            else -> null
+        Log.d(TAG, "======= RESOLVE MODEL PATH START =======")
+        Log.d(TAG, "Model ID: $modelId")
+
+        // Get current runtime to determine which model file to use
+        val runtime = preferencesManager.getMLRuntimeSync()
+        val path = when (runtime) {
+            PreferencesManager.MLRuntime.ONNX -> "models/student_model.onnx"
+            PreferencesManager.MLRuntime.TFLITE -> "models/student_model.pt" // TFLITE enum repurposed for PyTorch
+        }
+
+        Log.d(TAG, "Runtime: ${runtime.value}, Model path: $path")
+
+        // Verify model exists
+        return try {
+            context.assets.open(path).use { it.available() }
+            Log.d(TAG, "Model found: $path")
+            path
+        } catch (e: Exception) {
+            Log.e(TAG, "Model not found: $path - ${e.message}")
+            null
         }
     }
 

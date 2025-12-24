@@ -2,7 +2,6 @@ package com.example.intelli_pest.ml
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.os.Build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -10,7 +9,7 @@ import java.nio.ByteOrder
 class ImagePreprocessor {
 
     companion object {
-        private const val IMAGE_SIZE = 224
+        private const val IMAGE_SIZE = 256  // Models trained on 256x256 images
         private const val PIXEL_SIZE = 3 // RGB
     }
 
@@ -19,18 +18,26 @@ class ImagePreprocessor {
      * Resizes, normalizes, and converts to the format expected by ONNX model
      */
     fun preprocessImage(bitmap: Bitmap): FloatArray {
+        return preprocessImage(bitmap, IMAGE_SIZE)
+    }
+
+    /**
+     * Preprocess bitmap for model inference with custom target size
+     * Used for ONNX models that may require different input dimensions (e.g., 256x256)
+     */
+    fun preprocessImage(bitmap: Bitmap, targetSize: Int): FloatArray {
         // This function now assumes it receives a software bitmap.
         // The conversion is handled at the source (Camera/Gallery).
 
         // Resize bitmap to required size
-        val resizedBitmap = resizeBitmap(bitmap, IMAGE_SIZE, IMAGE_SIZE)
+        val resizedBitmap = resizeBitmap(bitmap, targetSize, targetSize)
 
         // Convert to float array with normalization
-        val floatArray = FloatArray(IMAGE_SIZE * IMAGE_SIZE * PIXEL_SIZE)
+        val floatArray = FloatArray(targetSize * targetSize * PIXEL_SIZE)
 
         try {
-            val pixels = IntArray(IMAGE_SIZE * IMAGE_SIZE)
-            resizedBitmap.getPixels(pixels, 0, IMAGE_SIZE, 0, 0, IMAGE_SIZE, IMAGE_SIZE)
+            val pixels = IntArray(targetSize * targetSize)
+            resizedBitmap.getPixels(pixels, 0, targetSize, 0, 0, targetSize, targetSize)
 
             var idx = 0
             for (pixel in pixels) {
@@ -47,8 +54,8 @@ class ImagePreprocessor {
         } catch (e: Exception) {
             // If getPixels fails, try pixel by pixel as a fallback
             var idx = 0
-            for (y in 0 until IMAGE_SIZE) {
-                for (x in 0 until IMAGE_SIZE) {
+            for (y in 0 until targetSize) {
+                for (x in 0 until targetSize) {
                     try {
                         val pixel = resizedBitmap.getPixel(x, y)
                         val r = ((pixel shr 16) and 0xFF) / 255.0f

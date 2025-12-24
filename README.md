@@ -7,7 +7,7 @@ An AI-powered Android application for detecting and classifying pest damage in s
 - 🎯 **11 AI Models** - Choose from multiple models for different accuracy/speed tradeoffs
 - 📸 **Easy to Use** - Simply take a photo or select from gallery
 - 📊 **Instant Results** - Get pest classification in seconds
-- 🔌 **Works Offline** - ResNet50 model bundled for offline use
+- 🔌 **Works Offline** - 5 optimized TFLite models bundled for offline use
 - 📥 **On-Demand Models** - Download additional models as needed
 - 🎨 **Modern UI** - Clean, intuitive Material Design interface
 - 🔒 **Crash-Free** - Hardened camera & gallery pipelines with software bitmap conversion
@@ -55,7 +55,7 @@ cd pest-detection-app
 ### System Requirements
 - **Minimum:** Android 7.0 (API 24)
 - **Target:** Android 14 (API 35)
-- **Recommended Storage:** 200 MB free space (bundled model only)
+- **Recommended Storage:** 100 MB free space
 - **Recommended RAM:** 512 MB+ available for model inference
 - **Permissions Required:**
   - Camera (for capturing images)
@@ -66,7 +66,7 @@ cd pest-detection-app
 ## 🚀 Usage
 
 ### 1. Launch the App
-Open Intelli_PEST from your app drawer. The bundled `resnet50.onnx` model (~98MB) is ready immediately for offline detection.
+Open Intelli_PEST from your app drawer. The bundled `mobilenet_v2.tflite` model (~3MB) is ready immediately for offline detection.
 
 ### 2. Capture or Select Image
 - **Camera:** Tap "Camera" → Grant permission → Capture image of affected crop
@@ -80,23 +80,26 @@ Open Intelli_PEST from your app drawer. The bundled `resnet50.onnx` model (~98MB
   - Processing time
   - All prediction alternatives
 
-### 4. Download Additional Models (Optional)
-- Go to Settings → Models
-- Browse available models (AlexNet, Super Ensemble, YOLO, etc.)
-- Tap "Download" to add more detection options
-- Models download from GitHub releases
+### 4. Switch Models (Optional)
+- Go to "AI Models" screen
+- Choose from 5 bundled models (MobileNet, YOLO, EfficientNet, etc.)
+- Download additional models if needed
 
 ---
 
 ## 🔧 Technical Details
 
 ### Framework
-- **ML Runtime:** ONNX Runtime for Android
+- **ML Runtime:** TensorFlow Lite (Migrated from ONNX Runtime)
 - **Architecture:** Clean Architecture with Repository pattern
 - **UI Framework:** Jetpack Compose with Material Design 3
 - **Camera:** CameraX with lifecycle-aware binding
 - **Database:** Room for detection history
 - **Async:** Kotlin Coroutines & Flow
+
+### Models
+The app uses **TensorFlow Lite (.tflite)** models for efficient on-device inference.
+Original **ONNX (.onnx)** models are also available in the repository for research and reference purposes.
 
 ### Key Components
 - **BitmapUtils:** Centralized software bitmap conversion (prevents HARDWARE bitmap crashes)

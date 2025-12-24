@@ -96,4 +96,22 @@ Thumbs.db
 # Models are too large for GitHub (100MB limit)
 # Download models from releases or provided link
 *.onnx
+*.pt
+*.tflite
+
+# Log files
+*.log
+*_logs_*.txt
+debug_logs.txt
+latest_debug_log.txt
+latest_log.txt
+adb_out.txt
+intelli_pest_logs_*.txt
+
+# Built APKs (upload to releases)
+*.apk
+
+# IDE specific
+.idea/inspectionProfiles/
+.idea/deploymentTargetSelector.xml
 
