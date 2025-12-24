@@ -159,30 +159,30 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Choose the ML runtime for model inference. TFLite is recommended for most devices.",
+                        "Choose the ML runtime for model inference. Both support .onnx and .pt model formats.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // TFLite Option
+                    // ONNX Option (Primary - Recommended)
                     RuntimeOption(
-                        title = "TensorFlow Lite",
-                        description = "Optimized for mobile • Faster • Lower memory",
-                        icon = Icons.Default.Speed,
-                        selected = uiState.mlRuntime == MLRuntime.TFLITE,
-                        onClick = { onMLRuntimeChanged(MLRuntime.TFLITE) }
+                        title = "ONNX Runtime",
+                        description = "Recommended • Cross-platform • Uses student_model.onnx",
+                        icon = Icons.Default.Hub,
+                        selected = uiState.mlRuntime == MLRuntime.ONNX,
+                        onClick = { onMLRuntimeChanged(MLRuntime.ONNX) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // ONNX Option
+                    // PyTorch Option
                     RuntimeOption(
-                        title = "ONNX Runtime",
-                        description = "Cross-platform • More model support",
-                        icon = Icons.Default.Hub,
-                        selected = uiState.mlRuntime == MLRuntime.ONNX,
-                        onClick = { onMLRuntimeChanged(MLRuntime.ONNX) }
+                        title = "PyTorch Mobile",
+                        description = "Native PyTorch • Uses student_model.pt",
+                        icon = Icons.Default.LocalFireDepartment,
+                        selected = uiState.mlRuntime == MLRuntime.TFLITE, // TFLITE enum repurposed for PyTorch
+                        onClick = { onMLRuntimeChanged(MLRuntime.TFLITE) }
                     )
                 }
             }

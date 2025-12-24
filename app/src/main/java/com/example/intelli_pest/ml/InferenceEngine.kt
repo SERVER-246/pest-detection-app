@@ -152,16 +152,43 @@ class InferenceEngine(
 
     /**
      * Validate if image is suitable for pest detection
+     * Returns true if valid, logs detailed metrics
      */
     suspend fun validateImage(bitmap: Bitmap): Boolean = withContext(Dispatchers.Default) {
         try {
             AppLogger.logAction("InferenceEngine", "ValidateImage_Start", "Validating image ${bitmap.width}x${bitmap.height}")
-            val isValid = imageValidator.isValidSugarcaneCropImage(bitmap)
-            AppLogger.logResponse("InferenceEngine", "ValidateImage_Result", "Is valid: $isValid")
-            isValid
+            val result = imageValidator.validateImageWithMetrics(bitmap)
+
+            // Log detailed metrics
+            AppLogger.logResponse("InferenceEngine", "ValidateImage_Result",
+                "valid=${result.isValid}, blur=${"%.1f".format(result.blurScore)}, " +
+                "contrast=${"%.1f".format(result.contrastScore)}, green=${"%.1f%%".format(result.greenRatio * 100)}, " +
+                "brightness=${result.brightness}" +
+                if (result.reason != null) ", reason=${result.reason}" else "")
+
+            result.isValid
         } catch (e: Exception) {
             AppLogger.logError("InferenceEngine", "ValidateImage_Error", e, "Validation failed, assuming valid")
             true
+        }
+    }
+
+    /**
+     * Validate image and get detailed validation result
+     */
+    suspend fun validateImageWithDetails(bitmap: Bitmap): ImageValidator.ValidationResult = withContext(Dispatchers.Default) {
+        try {
+            imageValidator.validateImageWithMetrics(bitmap)
+        } catch (e: Exception) {
+            AppLogger.logError("InferenceEngine", "ValidateImage_Error", e, "Validation failed")
+            ImageValidator.ValidationResult(
+                isValid = true,
+                blurScore = 0.0,
+                contrastScore = 0.0,
+                greenRatio = 0f,
+                brightness = 128,
+                reason = "Validation error: ${e.message}"
+            )
         }
     }
 

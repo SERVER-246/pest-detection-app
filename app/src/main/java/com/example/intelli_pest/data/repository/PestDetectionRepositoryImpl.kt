@@ -37,20 +37,26 @@ class PestDetectionRepositoryImpl(
 
     companion object {
         private const val TAG = "PestDetectionRepo"
-        private const val MIN_CONFIDENCE_FOR_VALID_IMAGE = 0.3f  // Minimum confidence to consider image valid
-        private const val MAX_ENTROPY_FOR_VALID_IMAGE = 2.0f    // Maximum entropy (randomness) in predictions
+
+        // Configurable thresholds for detection quality
+        const val MIN_CONFIDENCE_THRESHOLD = 0.50f  // Minimum confidence to accept detection (50%)
+        const val HIGH_CONFIDENCE_THRESHOLD = 0.70f // High confidence threshold for reliable detection
+        const val MAX_ENTROPY_THRESHOLD = 1.8f      // Maximum entropy - reject if predictions are too uncertain
+        const val LOW_CONFIDENCE_ENTROPY_THRESHOLD = 0.50f // If confidence below this AND entropy high, reject
     }
 
     override suspend fun detectPest(bitmap: Bitmap, modelId: String): Resource<DetectionResult> {
         AppLogger.logAction("Repository", "DetectPest_Called", "Model: $modelId, Bitmap: ${bitmap.width}x${bitmap.height}, Config: ${bitmap.config}")
         Log.d(TAG, "detectPest() start | model=$modelId | bitmap=${bitmap.width}x${bitmap.height} config=${bitmap.config}")
         return try {
-            // Step 1: Validate image first
+            // Step 1: Validate image quality and content
             AppLogger.logInfo("Repository", "Validating_Image", "Checking if image is suitable for pest detection")
-            val validationResult = validateImage(bitmap)
-            if (validationResult is Resource.Success && validationResult.data == false) {
-                AppLogger.logWarning("Repository", "Image_Validation_Failed", "Image does not appear to be a sugarcane crop")
-                // Don't block, just log - we'll check model confidence later
+            val validationResult = inferenceEngine.validateImageWithDetails(bitmap)
+
+            if (!validationResult.isValid) {
+                val reason = validationResult.reason ?: "Image quality insufficient for detection"
+                AppLogger.logWarning("Repository", "Image_Validation_Failed", reason)
+                return Resource.Error("Image validation failed: $reason")
             }
 
             val modelPath = resolveModelPath(modelId)
@@ -107,6 +113,7 @@ class PestDetectionRepositoryImpl(
 
     /**
      * Check if the image is unrelated to sugarcane crops based on model predictions
+     * Uses confidence and entropy thresholds to filter unreliable detections
      * Returns Pair(isUnrelated, reason)
      */
     private fun isUnrelatedImage(result: DetectionResult): Pair<Boolean, String> {
@@ -114,38 +121,60 @@ class PestDetectionRepositoryImpl(
 
         // If no predictions, likely an issue
         if (allPredictions.isEmpty()) {
+            AppLogger.logWarning("Repository", "No_Predictions", "No predictions available from model")
             return Pair(true, "No predictions available")
         }
 
         // Get top prediction confidence
         val topConfidence = result.confidence
 
-        // Check 1: If top confidence is very low, image might be unrelated
-        if (topConfidence < MIN_CONFIDENCE_FOR_VALID_IMAGE) {
-            AppLogger.logDebug("Repository", "Low_Confidence_Check", "Top confidence $topConfidence < $MIN_CONFIDENCE_FOR_VALID_IMAGE")
-            return Pair(true, "Model confidence too low (${String.format(Locale.US, "%.1f%%", topConfidence * 100)}). Please capture a clearer image of sugarcane.")
-        }
-
-        // Check 2: Calculate entropy of predictions - high entropy means uncertain/random predictions
+        // Calculate entropy of predictions
         val entropy = calculateEntropy(allPredictions.map { it.confidence })
-        AppLogger.logDebug("Repository", "Entropy_Check", "Prediction entropy: $entropy")
 
-        if (entropy > MAX_ENTROPY_FOR_VALID_IMAGE && topConfidence < 0.5f) {
-            return Pair(true, "Image content is unclear. Please capture a focused image of sugarcane crop.")
+        AppLogger.logDebug("Repository", "Confidence_Entropy_Check",
+            "Confidence: ${String.format(Locale.US, "%.1f%%", topConfidence * 100)}, Entropy: ${String.format(Locale.US, "%.2f", entropy)}")
+
+        // Check 1: Absolute minimum confidence threshold
+        if (topConfidence < MIN_CONFIDENCE_THRESHOLD) {
+            val reason = "Detection confidence too low (${String.format(Locale.US, "%.1f%%", topConfidence * 100)}). " +
+                        "Please capture a clearer, close-up image of the sugarcane damage."
+            AppLogger.logWarning("Repository", "Low_Confidence_Rejected",
+                "Confidence ${"%.1f%%".format(topConfidence * 100)} < ${MIN_CONFIDENCE_THRESHOLD * 100}%")
+            return Pair(true, reason)
         }
 
-        // Check 3: If all predictions have very similar (uniform) confidence, image is likely unrelated
+        // Check 2: High entropy with moderate confidence indicates uncertainty
+        if (entropy > MAX_ENTROPY_THRESHOLD && topConfidence < HIGH_CONFIDENCE_THRESHOLD) {
+            val reason = "Detection is uncertain (entropy: ${String.format(Locale.US, "%.2f", entropy)}). " +
+                        "Please try with a clearer image showing the pest damage more prominently."
+            AppLogger.logWarning("Repository", "High_Entropy_Rejected",
+                "Entropy ${"%.2f".format(entropy)} > $MAX_ENTROPY_THRESHOLD with low confidence")
+            return Pair(true, reason)
+        }
+
+        // Check 3: Very low confidence combined with high entropy - definitely unrelated
+        if (topConfidence < LOW_CONFIDENCE_ENTROPY_THRESHOLD && entropy > MAX_ENTROPY_THRESHOLD * 0.9) {
+            val reason = "Cannot identify pest damage in this image. Please ensure the image shows sugarcane crop."
+            AppLogger.logWarning("Repository", "Unrelated_Image",
+                "Low confidence + high entropy indicates unrelated image")
+            return Pair(true, reason)
+        }
+
+        // Check 4: Uniform distribution check - all predictions similar means model is guessing
         val confidences = allPredictions.map { it.confidence }
         val maxConf = confidences.maxOrNull() ?: 0f
         val minConf = confidences.minOrNull() ?: 0f
         val range = maxConf - minConf
 
-        // Only check uniform distribution if confidence is still relatively low
-        if (range < 0.1f && maxConf < 0.4f) {
-            AppLogger.logDebug("Repository", "Uniform_Distribution_Check", "Uniform distribution detected, range: $range")
-            return Pair(true, "Cannot identify sugarcane crop in this image. Please try a different image.")
+        if (range < 0.15f && maxConf < 0.4f) {
+            AppLogger.logWarning("Repository", "Uniform_Distribution",
+                "Predictions are uniformly distributed (range: ${"%.2f".format(range)})")
+            return Pair(true, "Cannot identify sugarcane crop in this image. The model cannot distinguish features.")
         }
 
+        // Passed all checks
+        AppLogger.logInfo("Repository", "Detection_Accepted",
+            "Detection accepted: ${result.pestType.displayName} at ${String.format(Locale.US, "%.1f%%", topConfidence * 100)}")
         return Pair(false, "")
     }
 

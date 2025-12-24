@@ -70,6 +70,21 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // Ensure native libraries are properly packaged
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/*.so"
+        }
+    }
+
+    // ABI splits to reduce APK size - only package required architectures
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true // Also build universal APK for testing
+        }
     }
 
     androidResources {
@@ -114,9 +129,10 @@ dependencies {
     // ONNX Runtime (for student_model.onnx inference)
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.16.3")
 
-    // PyTorch Mobile (for student_model.pt inference)
-    implementation("org.pytorch:pytorch_android_lite:2.1.0")
-    implementation("org.pytorch:pytorch_android_torchvision_lite:2.1.0")
+    // PyTorch Mobile FULL version (includes native JNI libs)
+    // Note: Using full version instead of lite to ensure libpytorch_jni.so is included
+    implementation("org.pytorch:pytorch_android:2.1.0")
+    implementation("org.pytorch:pytorch_android_torchvision:2.1.0")
 
     // Image Loading
     implementation(libs.coil.compose)
